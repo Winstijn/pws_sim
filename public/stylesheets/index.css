@@ -1,0 +1,28 @@
+/* 
+//  PWS AI
+//
+//  Created by Winstijn Smit
+//  Copyright © 2019 Kaziaat B.V. All rights reserved.
+*/
+
+
+body {
+    background-color: #333;
+    font-family: system-ui;
+    color: white;
+}
+
+#top {
+    display: flex;
+    flex-direction: row;
+    padding-left: 10px;
+    padding-top: 5px;
+}
+
+#footer {
+    bottom: 2px;
+    position: absolute;
+    left: 6px;
+    color: white;
+}
+  
