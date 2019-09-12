@@ -6,7 +6,8 @@
 //  Copyright © 2019 Kaziaat B.V. All rights reserved.
 //
 
-// Example for Fyor.
+
+// Example for Fyor. 
 class SelfDrivingAI {
 
     constructor(settings) {
@@ -17,7 +18,7 @@ class SelfDrivingAI {
 
         this.canvas = __SIMULATOR_CANVAS
         this.id = "fjkabfjsfuwhr209u4"
-        this.values = [0, 30,4, 5,5,]
+        this.values = [0, 30,4, 5,5]
         this.fitness = 0
 
         // 
@@ -25,7 +26,7 @@ class SelfDrivingAI {
 
     // called everyframe
     draw() {
-        if 
+    
     }
 
     generateRandomAI(){
@@ -35,13 +36,14 @@ class SelfDrivingAI {
 }
 
 $(document).ready( () => {
+    return
     var aiCount = 100
     var ais = []
     for (let i = 0; i < aiCount; i++) {
         ais.push( new SelfDrivingAI({ random: true, val })  )
         
     }
-    
+    __SIMULATOR_CANVAS.start(ais)
 
 })
 
