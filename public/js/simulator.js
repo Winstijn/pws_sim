@@ -22,9 +22,10 @@ class Simulator {
         this.resolution = {width: 700, height: 700}
         
         // Variables for creations of tracks and cars.
-        this.tracks = []
+        this.tracks = [] 
         this.cars = []
         this.trackColor = 255
+        this.circleRadius = 90
         this.backgroundColor = 120
         this.trackIndex = 0
         this.editingTrack = true
@@ -38,7 +39,6 @@ class Simulator {
     setup(){
         this.log("p5.js libary setting up!")
         this.canvas.createCanvas( this.resolution.width , this.resolution.height , this.webGL ? "webgl" : 'p2d');
-        this.canvas.noCursor();
         this.canvas.frameRate(this.frameRate);
 
         $("#center").append(this.canvas.canvas)
@@ -49,6 +49,7 @@ class Simulator {
     // Never forget that order of render is important!
     draw(){
         if (this.webGL) this.canvas.translate(-0.5 * this.canvas.width, -0.5 * this.canvas.height)
+        // this.editingTrack ? this.canvas.noCursor() : this.canvas.cursor();
         this.canvas.background(this.backgroundColor);
         if (this.showDebug) this.drawDebugText();
     
@@ -61,7 +62,10 @@ class Simulator {
     drawCars(){
         // debugging only
         if (!this.editingTrack && this.canvas.mouseIsPressed && !this.cars[0]){
-            this.cars[0] = new Car(this, undefined, this.canvas.mouseX, this.canvas.mouseY);
+            // for (let i = 0; i < 100; i++) {
+                // const element = array[i];
+                this.cars[i] = new Car(this, undefined, this.canvas.mouseX, this.canvas.mouseY);
+            // }
         }
         for (let i = 0; i < this.cars.length; i++) {
             this.cars[i].draw();            
@@ -77,7 +81,7 @@ class Simulator {
         this.canvas.noStroke();
         this.canvas.text('wingine v0.2.1', 10, currentOffset += offset);
         this.canvas.text('fps: ' + Math.round(this.canvas.frameRate()), 10, currentOffset += offset);
-        this.canvas.text('mouseX: ' + this.canvas.mouseX + ", mouseY: " + this.canvas.mouseY, 10, currentOffset += offset);
+        this.canvas.text('mouseX: ' + Math.round(this.canvas.mouseX) + ", mouseY: " + Math.round(this.canvas.mouseY), 10, currentOffset += offset);
         this.canvas.text('Currently inside track: ' + !this.outOfTrack( this.canvas.mouseX, this.canvas.mouseY ) , 10, currentOffset += offset);
         if (this.editingTrack) this.canvas.text('TRACK_EDITING MODE', 10, currentOffset += offset);
     }
@@ -88,17 +92,30 @@ class Simulator {
     drawTrack(){
         // Draw all circles that create the track.
         if (!this.tracks[this.trackIndex]) return
-        this.canvas.noStroke()
 
         for (let i = 0; i < this.tracks[this.trackIndex].length; i++) {
             const c = this.tracks[this.trackIndex][i]
+            this.canvas.noStroke()
             this.canvas.fill(this.trackColor)
-            this.canvas.circle(c[0], c[1], 100, 100)
+            this.canvas.circle(c[0], c[1], this.circleRadius, this.circleRadius)
+        }
+
+        // Disabled for now!
+        // Lines between the circles!
+        if (this.showDebug && false) {
+            for (let i = 0; i < this.tracks[this.trackIndex].length; i++) {
+                const c = this.tracks[this.trackIndex][i]
+                const nextC = this.tracks[this.trackIndex][i + 1]
+                if (nextC) { 
+                    this.canvas.stroke(20);
+                    this.canvas.fill(70)
+                    this.canvas.line(c[0], c[1], nextC[0], nextC[1])
+                }
+            }
         }
     }
     
     drawTrackEditing(){
-
         // Create track at index!
         if (!this.tracks[this.trackIndex]) {
             this.tracks[this.trackIndex] = []
@@ -108,14 +125,19 @@ class Simulator {
         // When moused is pressed, add a circle to the track.
         // TODO: Optimize with typed arrays, or even without a nested array.
         if (this.canvas.mouseIsPressed){
-            var circle = new Uint16Array(2)
-            circle[0] = Math.round(this.canvas.mouseX); circle[1] = Math.round(this.canvas.mouseY);
-            this.tracks[this.trackIndex].push(circle);
+            this.tracks[this.trackIndex].push( this.createCircleArray( this.canvas.mouseX, this.canvas.mouseY ) );
         }
 
         // Current circle when moving the mouse.
         this.canvas.stroke(0);
-        this.canvas.circle(this.canvas.mouseX, this.canvas.mouseY, 100, 100)  
+        this.canvas.circle(this.canvas.mouseX, this.canvas.mouseY, this.circleRadius, this.circleRadius)  
+    }
+
+    // Refactored because this code is used multiple times.
+    createCircleArray(x, y){
+        var circle = new Uint16Array(2)
+        circle[0] = Math.round(x); circle[1] = Math.round(y);
+        return circle
     }
 
     saveCurrentTrack(){
@@ -185,6 +207,7 @@ class Simulator {
         return reduced
     }
 
+
     // Important function!
     // Declares if coordinate is in track or not!
     outOfTrack(x, y){
@@ -199,7 +222,8 @@ class Simulator {
         return __TRACK_PIXELS[ Math.round(x) + Math.round(y) * this.resolution.width] == this.backgroundColor
     }
 
-    // #endregion 
+    // #endregion Track Logic 
+
 
     // Fyor gives me his Generation instance.
     trainGeneration(generation) {
@@ -225,22 +249,91 @@ class Simulator {
 }
 
 // Car that drives
+// TODO: Explain in PWS!
 class Car {
 
-    // Should be an object.
+    // Input should be an object.
     constructor(sim, ai, x, y, color = 20){
-        this.sim = sim
-        this.ai = ai
-        this.x = Math.round(x);
-        this.y = Math.round(y);
+        // console.log(x)
+        this.sim = sim;
+        this.ai = ai;
+        this.x = Math.round(x); 
+        this.y = Math.round(y); 
+        this.velocityX = 0; // In Pixels per Frame.
+        this.velocityY = 0; // in Pixels per Frame.
+        this.accel = 0 // In Pixels per Frame per Frame
+
+        // Needs to be recalculated for in the real world!
+        this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
+        this.standardAccel = 5 
+
         this.color = color 
-        // this.canvas = this.sim.canvas
+        this.width = 30
+        this.height = 60
+    
+        // Still needs to be thought of!
+        this.steer = Math.PI / 2 // Radians!
     }
         
-    // Drawing car
+    // Drawing car 60 times a second.
     draw(){
         this.sim.canvas.fill(this.color);
-        this.sim.canvas.rect(this.x, this.y, 60, 30);
+        // this.sim.canvas.translate( Math.cos(this.steer), Math.sin(this.steer) )
+
+        // This translate and rotate needs to be explained!
+        // The Pop and Push reset the translate and rotate for the next car!
+        this.sim.canvas.push()
+
+        this.sim.canvas.rectMode(this.sim.canvas.CENTER)
+        this.sim.canvas.translate(this.x, this.y);
+        this.sim.canvas.rotate(this.steer)
+        this.sim.canvas.rect(0 , 0, this.height, this.width);
+
+        this.sim.canvas.pop();
+
+
+        // Updating pixelPositions and values.k
+        this.updatePhysics();
+
+        // Controlling one vehicle with the keys!
+        this.checkControls();
+        
+    }
+
+    updatePhysics(){
+        this.x = this.velocityX + this.x 
+        this.y = this.velocityY + this.y 
+
+        // Accelartion needs to be computed to compontents
+        this.velocityX = this.accel * Math.cos( this.steer );
+        this.velocityY = this.accel * Math.sin( this.steer );
+
+        // Decay accelaration.
+
+        // TODO: Explain in PWS!
+        // Er is een weerstand en die geldt voor het acceleren!
+        if (this.accel > 0) {
+            (this.accel - this.accelResistance < 0 || this.accel == 0) ? this.accel = 0 : this.accel -= this.accelResistance 
+        } else {
+            (this.accel - this.accelResistance > 0 || this.accel == 0) ? this.accel = 0 : this.accel += this.accelResistance 
+        }
+
+    }
+
+    checkControls(){
+            // We are not using a switch because we want to support multiple button presses!
+
+            // Press: S (going backwards)
+            if (this.sim.canvas.keyIsDown(83) ) this.accel = this.standardAccel
+
+            // Press: W (going forward)
+            if (this.sim.canvas.keyIsDown(87)) this.accel = -this.standardAccel
+
+            // Press: A (steering left)
+            if (this.sim.canvas.keyIsDown(65)) this.steer -= Math.PI / 64
+
+            // Press: D (steering right)
+            if (this.sim.canvas.keyIsDown(68)) this.steer += Math.PI / 64
     }
 
 }  
@@ -248,6 +341,10 @@ class Car {
 
 $(document).ready( () => {
     __SIMULATOR = new Simulator()
+
+    // For debugging:
+    __SIMULATOR.importTrack(testTrack);
+    setTimeout( () => __SIMULATOR.saveCurrentTrack(), 200)
 })
 
 
