@@ -136,6 +136,34 @@ class Simulator {
         alert("Saved track!");
     }
 
+
+    // TODO: make track downloadable!
+    importTrack(trackJSON){
+        const trackId = this.tracks.length - 1;
+        const json = JSON.parse(trackJSON);
+        const track = [];
+
+        // Doing a try, because a lot of things can go wrong here!
+        try {
+            this.log('Loading in a saved track into application!');
+            for (let i = 0; i < json.length; i++){
+                track.push( this.createCircleArray( Number(json[i]["0"]), Number( json[i]["1"]) ) )
+            }
+
+            this.tracks[trackId] = track
+            this.trackIndex = trackId
+
+        } catch {
+            alert("You have loaded an invalid track!");
+        }
+
+    }
+
+
+    // #endregion 
+
+    // #region Track Logic 
+
     // Removing all the unnessacary information from the pixelArray.
     reduceTrackPixels(pixels) {
         // The UInt8ClampedArray will give a big performance boost because it is a typed array.
