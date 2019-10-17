@@ -9,7 +9,7 @@
 // We will work with classes!
 // This simulator will probably work with Chrome only because we intent to use it like that.
 class Simulator {
-    
+
     // TODO: Make simulator customisable with an init function!
     constructor() {
         this.log("Starting a simulator instance...")
@@ -20,9 +20,9 @@ class Simulator {
         this.webGL = false
         this.showDebug = true
         this.resolution = {width: 700, height: 700}
-        
+
         // Variables for creations of tracks and cars.
-        this.tracks = [] 
+        this.tracks = []
         this.cars = []
         this.trackColor = 255
         this.circleRadius = 90
@@ -52,8 +52,8 @@ class Simulator {
         // this.editingTrack ? this.canvas.noCursor() : this.canvas.cursor();
         this.canvas.background(this.backgroundColor);
         if (this.showDebug) this.drawDebugText();
-    
-        // Interface and listeners and such when editing track. 
+
+        // Interface and listeners and such when editing track.
         this.drawTrack();
         this.drawCars();
         if (this.editingTrack) this.drawTrackEditing();
@@ -61,19 +61,20 @@ class Simulator {
 
     drawCars(){
         // debugging only
-        if (!this.editingTrack && this.canvas.mouseIsPressed && !this.cars[0]){
-            // for (let i = 0; i < 100; i++) {
-                // const element = array[i];
+        var mouseOnCanvas = this.canvas.mouseX > 0 & this.canvas.mouseX < this.resolution.width && this.canvas.mouseY > 0 && this.canvas.mouseY < this.resolution.height;
+
+        if (!this.editingTrack && this.canvas.mouseIsPressed && !this.cars[0] && mouseOnCanvas){
+             for (let i = 0; i < __POPULATION; i++) {
                 this.cars[0] = new Car(this, undefined, this.canvas.mouseX, this.canvas.mouseY);
-            // }
+            }
         }
         for (let i = 0; i < this.cars.length; i++) {
-            this.cars[i].draw();            
+            this.cars[i].draw();
         }
-    
+
     }
 
-    drawDebugText(){ 
+    drawDebugText(){
         // if (this.webGL) this.canvas.textFont('Source Code Pro');
         var offset = 11, currentOffset = 10
         this.canvas.textSize(10);
@@ -106,7 +107,7 @@ class Simulator {
             for (let i = 0; i < this.tracks[this.trackIndex].length; i++) {
                 const c = this.tracks[this.trackIndex][i]
                 const nextC = this.tracks[this.trackIndex][i + 1]
-                if (nextC) { 
+                if (nextC) {
                     this.canvas.stroke(20);
                     this.canvas.fill(70)
                     this.canvas.line(c[0], c[1], nextC[0], nextC[1])
@@ -114,14 +115,14 @@ class Simulator {
             }
         }
     }
-    
+
     drawTrackEditing(){
         // Create track at index!
         if (!this.tracks[this.trackIndex]) {
             this.tracks[this.trackIndex] = []
             this.canvas.cursor();
         }
-        
+
         // When moused is pressed, add a circle to the track.
         // TODO: Optimize with typed arrays, or even without a nested array.
         if (this.canvas.mouseIsPressed){
@@ -130,7 +131,7 @@ class Simulator {
 
         // Current circle when moving the mouse.
         this.canvas.stroke(0);
-        this.canvas.circle(this.canvas.mouseX, this.canvas.mouseY, this.circleRadius, this.circleRadius)  
+        this.canvas.circle(this.canvas.mouseX, this.canvas.mouseY, this.circleRadius, this.circleRadius)
     }
 
     // Refactored because this code is used multiple times.
@@ -149,7 +150,7 @@ class Simulator {
 
         this.canvas.loadPixels();
         this.log('Saving all the rendered pixels to save and reduce calculation overhead.')
-        // pixelDensity() * pixelDensity() * 700x700 *  
+        // pixelDensity() * pixelDensity() * 700x700 *
         // length of array from the trackPixels.
         __TRACK_INDEX = this.trackIndex
         __TRACK_PIXELS = this.reduceTrackPixels(this.canvas.pixels)
@@ -182,9 +183,24 @@ class Simulator {
     }
 
 
-    // #endregion 
+    exportTrack(trackId){
+      var currentTrack = __SIMULATOR.tracks[trackId];
+      var trackArray = [];
+      for(var circle of currentTrack){
+        trackArray.push({
+          "0": circle[0],
+          "1": circle[1]
+        })
+      }
+      const exportedTrack = JSON.stringify(trackArray);
 
-    // #region Track Logic 
+      console.log(exportedTrack);
+    }
+
+
+    // #endregion
+
+    // #region Track Logic
 
     // Removing all the unnessacary information from the pixelArray.
     reduceTrackPixels(pixels) {
@@ -201,7 +217,7 @@ class Simulator {
                 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators
                 // In the future uses flags and store as single bits, 0 or 1.
                 // Might be faster in the future if needed.
-            }            
+            }
         }
         this.log('Reduced trackPixels from', pixels.length, "to", reduced.length, "bytes.")
         return reduced
@@ -222,13 +238,13 @@ class Simulator {
         return __TRACK_PIXELS[ Math.round(x) + Math.round(y) * this.resolution.width] == this.backgroundColor
     }
 
-    // #endregion Track Logic 
+    // #endregion Track Logic
 
 
     // Fyor gives me his Generation instance.
     trainGeneration(generation) {
-       // 
-    }    
+       //
+    }
 
     log(...args) {
         console.log("[Simulator]", ...args)
@@ -243,9 +259,9 @@ class Simulator {
             functions.forEach( name => {
                 if (this[name]) pc[name] = () => this[name]()
             })
-        }     
+        }
     }
-    
+
 }
 
 // Car that drives
@@ -258,8 +274,8 @@ class Car {
         this.sim = sim;
         this.isAlive = true
         this.ai = new DrivingAI({ car: this });
-        this.x = Math.round(x); 
-        this.y = Math.round(y); 
+        this.x = Math.round(x);
+        this.y = Math.round(y);
         this.velocityX = 0; // In Pixels per Frame.
         this.velocityY = 0; // in Pixels per Frame.
         this.accel = 0 // In Pixels per Frame per Frame
@@ -268,14 +284,14 @@ class Car {
         this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
         this.standardAccel = 2
 
-        this.color = color 
+        this.color = color
         this.width = 20
         this.height = 30
-    
+
         // Still needs to be thought of!
         this.steer = Math.PI / 2 // Radians!
     }
-        
+
     // Drawing car 60 times a second.
     draw(){
         this.sim.canvas.fill(this.color);
@@ -311,8 +327,8 @@ class Car {
 
 
     updatePhysics(){
-        this.x = this.velocityX + this.x 
-        this.y = this.velocityY + this.y 
+        this.x = this.velocityX + this.x
+        this.y = this.velocityY + this.y
 
         // Accelartion needs to be computed to compontents
         this.velocityX = this.accel * Math.cos( this.steer );
@@ -323,9 +339,9 @@ class Car {
         // TODO: Explain in PWS!
         // Er is een weerstand en die geldt voor het acceleren!
         if (this.accel > 0) {
-            (this.accel - this.accelResistance < 0 || this.accel == 0) ? this.accel = 0 : this.accel -= this.accelResistance 
+            (this.accel - this.accelResistance < 0 || this.accel == 0) ? this.accel = 0 : this.accel -= this.accelResistance
         } else {
-            (this.accel - this.accelResistance > 0 || this.accel == 0) ? this.accel = 0 : this.accel += this.accelResistance 
+            (this.accel - this.accelResistance > 0 || this.accel == 0) ? this.accel = 0 : this.accel += this.accelResistance
         }
 
     }
@@ -350,11 +366,51 @@ class Car {
             if (this.sim.canvas.keyIsDown(68)) this.steer += Math.PI / 64
     }
 
-}  
+    collisionDetection(){
+      //Collision detection system
+      var halfWidth = 0.5*this.width;
+      var halfHeight = 0.5*this.height;
+
+      //Car coordinates
+      var topLeft = {
+        x:this.x - halfWidth+this.velocityX,
+        y:this.y - halfHeight+this.velocityY
+      }
+
+      var topRight = {
+        x:this.x + halfWidth+this.velocityX,
+        y:this.y - halfHeight+this.velocityY
+      }
+
+      var bottomLeft = {
+        x:this.x - halfWidth+this.velocityX,
+        y:this.y + halfHeight+this.velocityY
+      }
+
+      var bottomRight = {
+        x:this.x + halfWidth+this.velocityX,
+        y:this.y + halfHeight+this.velocityY
+      }
+
+      var points = [topLeft, topRight, bottomLeft, bottomRight];
+      // Check for in track
+      var point;
+      for(point of points){
+        if (__SIMULATOR.outOfTrack(point.x, point.y)) {
+          this.isAlive = false;
+          __SIMULATOR.casualties += 1
+          break;
+        }
+      }
+    }
+
+}
 
 
 $(document).ready( () => {
-    __SIMULATOR = new Simulator()
+    __SIMULATOR = new Simulator();
+    __POPULATION = 1;
+
 
     // For debugging:
     __SIMULATOR.importTrack(testTrack);
@@ -362,7 +418,7 @@ $(document).ready( () => {
 })
 
 
-// String protoypes:   
+// String protoypes:
 String.prototype.upcase = function(){
     return this[0].toUpperCase() + this.substring(1)
 }
@@ -370,4 +426,3 @@ String.prototype.upcase = function(){
 String.prototype.reverse = function(){
     return this.split("").reverse().toString().replace(/,/g, "")
 }
-
