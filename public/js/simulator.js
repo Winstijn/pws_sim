@@ -280,9 +280,25 @@ class Car {
     draw(){
         this.sim.canvas.fill(this.color);
         // this.sim.canvas.translate( Math.cos(this.steer), Math.sin(this.steer) )
+        
+        // Drawing actual car at X and Y positions  
+        this.drawCar();
 
+        // Calculate distances from the walls!
+        this.calculateDistances();
+
+        // Controlling one vehicle with the keys!
+        this.checkControls();
+        this.ai.predictDrive();
+
+        // Updating pixelPositions and values.
+        this.updatePhysics();
+    }
+
+    drawCar(){
         // This translate and rotate needs to be explained!
         // The Pop and Push reset the translate and rotate for the next car!
+        // The pop and push might not be the best solution!
         this.sim.canvas.push()
 
         this.sim.canvas.rectMode(this.sim.canvas.CENTER)
@@ -291,15 +307,8 @@ class Car {
         this.sim.canvas.rect(0 , 0, this.height, this.width);
 
         this.sim.canvas.pop();
-
-
-        // Updating pixelPositions and values.k
-        this.updatePhysics();
-
-        // Controlling one vehicle with the keys!
-        this.checkControls();
-        this.ai.predictDrive();
     }
+
 
     updatePhysics(){
         this.x = this.velocityX + this.x 
@@ -319,6 +328,10 @@ class Car {
             (this.accel - this.accelResistance > 0 || this.accel == 0) ? this.accel = 0 : this.accel += this.accelResistance 
         }
 
+    }
+
+    calculateDistances(){
+        
     }
 
     checkControls(){
