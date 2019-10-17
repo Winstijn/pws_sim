@@ -30,6 +30,7 @@ class Simulator {
         this.trackIndex = 0
         this.editingTrack = true
         this.frameRate = 60
+        this.casualties = 0
 
 
         this.log("Finished initializing the simulator!")
@@ -156,7 +157,7 @@ class Simulator {
         __TRACK_PIXELS = this.reduceTrackPixels(this.canvas.pixels)
 
         this.editingTrack = false
-        alert("Saved track!");
+        // alert("Saved track!");
     }
 
 
@@ -293,7 +294,15 @@ class Car {
     }
 
     // Drawing car 60 times a second.
+    // Placing of functions is fital in this function.
+    // Watch out and test before changing something here.
     draw(){
+        // If it's dead, don't render it.
+        if(!this.isAlive) return 
+        
+        // Check if car is in a wall, because we kill it, if it is!
+        this.collisionDetection();
+
         this.sim.canvas.fill(this.color);
         // this.sim.canvas.translate( Math.cos(this.steer), Math.sin(this.steer) )
         
