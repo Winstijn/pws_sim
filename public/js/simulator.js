@@ -64,7 +64,7 @@ class Simulator {
         if (!this.editingTrack && this.canvas.mouseIsPressed && !this.cars[0]){
             // for (let i = 0; i < 100; i++) {
                 // const element = array[i];
-                this.cars[i] = new Car(this, undefined, this.canvas.mouseX, this.canvas.mouseY);
+                this.cars[0] = new Car(this, undefined, this.canvas.mouseX, this.canvas.mouseY);
             // }
         }
         for (let i = 0; i < this.cars.length; i++) {
@@ -256,7 +256,8 @@ class Car {
     constructor(sim, ai, x, y, color = 20){
         // console.log(x)
         this.sim = sim;
-        this.ai = ai;
+        this.isAlive = true
+        this.ai = new DrivingAI({ car: this });
         this.x = Math.round(x); 
         this.y = Math.round(y); 
         this.velocityX = 0; // In Pixels per Frame.
@@ -265,11 +266,11 @@ class Car {
 
         // Needs to be recalculated for in the real world!
         this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
-        this.standardAccel = 5 
+        this.standardAccel = 2
 
         this.color = color 
-        this.width = 30
-        this.height = 60
+        this.width = 20
+        this.height = 30
     
         // Still needs to be thought of!
         this.steer = Math.PI / 2 // Radians!
@@ -297,7 +298,7 @@ class Car {
 
         // Controlling one vehicle with the keys!
         this.checkControls();
-        
+        this.ai.predictDrive();
     }
 
     updatePhysics(){
