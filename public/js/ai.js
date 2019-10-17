@@ -8,29 +8,41 @@
 
 
 // Example for Fyor. 
-class SelfDrivingAI {
+class DrivingAI extends NeuralNetwork {
 
     constructor(settings) {
+        // Calling NeuralNetworks constructor!
+        super(5, 6, 2);
+        return 
 
-        if (settings.random) {
-            this.generateRandomAI()
-        }
-
-        this.canvas = __SIMULATOR_CANVAS
-        this.id = "fjkabfjsfuwhr209u4"
+        this.car = settings.car
         this.values = [0, 30,4, 5,5]
         this.fitness = 0
 
-        // 
+        //  
     }
 
     // called everyframe
-    draw() {
-    
+    predictDrive(){
+        return 
+        
+        // Put inputs here!
+        const inputs = [];
+        inputs[0] = this.car.x / __SIMULATOR.resolution.width
+
+        const output = this.predict();
+
+        this.car.accel = -this.car.standardAccel * output[0]
+        this.car.steer = output[1] * Math.PI
     }
 
     generateRandomAI(){
+        
+    }
 
+    // Saving AI to a string!
+    save(){
+        this.serialize()
     }
 
 }
