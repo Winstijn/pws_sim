@@ -355,8 +355,37 @@ class Car {
 
     }
 
+    // Pfft hell of a function
+    // TODO: Uitleggen in het PWS
     calculateDistances(){
+        const halfWidth = this.width / 2
+        const halfHeight = this.height / 2
+
+        // Front, with a (0, 1) vector 
+        // Need to think of a way to richtingsvector.
+        this.sim.canvas.stroke(126)
+        var front = this.calculateDistance( this.x, this.y - halfHeight,  Math.cos( this.steer ), -Math.sin( this.steer ) )
+        var left = this.calculateDistance( this.x - halfWidth, this.y,    Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2)  )
+        var right = this.calculateDistance( this.x + halfWidth, this.y,   Math.cos( this.steer - Math.PI / 2 ), -Math.sin( this.steer - Math.PI / 2)  )
         
+    }
+
+    // Input a richtingsvector and starting point!
+    // Making small steps
+    calculateDistance(startX, startY, vecX, vecY){
+        // Starting point, vec
+        var distance = 0
+        var x = startX, y = startY
+        vecX = Math.round(vecX); vecY = Math.round(vecY)
+        
+        while ( !this.sim.outOfTrack( x, y ) ) {
+            x += vecX; y += vecY;
+        }
+        distance = Math.sqrt( Math.pow( startX - x , 2) + Math.pow( startY - y, 2) );
+        this.sim.canvas.line(startX, startY, x, y);
+        return distance
+
+
     }
 
     checkControls(){
@@ -375,8 +404,9 @@ class Car {
             if (this.sim.canvas.keyIsDown(68)) this.steer += Math.PI / 64
     }
 
+
+    //Collision detection system for the car itself.
     collisionDetection(){
-      //Collision detection system
       var halfWidth = 0.5*this.width;
       var halfHeight = 0.5*this.height;
 
