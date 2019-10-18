@@ -1,5 +1,5 @@
 //
-//  PWS AI 
+//  PWS AI
 //  ai.js
 //
 //  Created by Fyor Klein Gunnewiek
@@ -7,62 +7,73 @@
 //
 
 
-// Example for Fyor. 
+// Example for Fyor.
 class DrivingAI extends NeuralNetwork {
 
     constructor(settings) {
         // Calling NeuralNetworks constructor!
         super(5, 6, 2);
-        return 
+
 
         this.car = settings.car
-        this.values = [0, 30,4, 5,5]
-        this.fitness = 0
+        this.inputs = [];
+        this.fitness = 0;
 
-        //  
     }
 
     // called everyframe
     predictDrive(){
-        return 
-        
         // Put inputs here!
-        const inputs = [];
-        inputs[0] = this.car.x / __SIMULATOR.resolution.width
+        if (__SIMULATOR.casualties == __POPULATION) {
+          nextGen();
+        } else {
+          this.inputs[0] = this.car.x / __SIMULATOR.resolution.width;
+          this.inputs[1] = this.car.y / __SIMULATOR.resolution.height;
+          this.inputs[2] = this.car.velocityX / __SIMULATOR.resolution.width;
+          this.inputs[3] = this.car.velocityY / __SIMULATOR.resolution.height;
+          this.inputs[4] = this.car.steer;
+          const output = this.predict(this.inputs);
 
-        const output = this.predict();
-
-        this.car.accel = -this.car.standardAccel * output[0]
-        this.car.steer = output[1] * Math.PI
+          this.car.accel = -this.car.standardAccel * output[0]
+          this.car.steer = output[1] * Math.PI
+        }
+    }
+    genGenGen(){
+      //Generate Genes of Generation
+      //Ik hou van deze functie naam!
     }
 
-    generateRandomAI(){
-        
+    nextGen(){
+      evolveGen()
+      for (let i = 0; i < __POPULATION; i++) {
+         __SIMULATOR.cars[i] = new Car(__SIMULATOR, undefined, __SIMULATOR.canvas.mouseX, __SIMULATOR.canvas.mouseY);
+       }
+    }
+
+    evolveGen(){
+
     }
 
     // Saving AI to a string!
     save(){
-        this.serialize()
+        //this.serialize()
     }
 
 }
 
+function firstGen() {
+  for (let i = 0; i < __POPULATION; i++) {
+     __SIMULATOR.cars[i] = new Car(__SIMULATOR, undefined, __SIMULATOR.spawnPoint.x, __SIMULATOR.);
+   }
+}
+
 $(document).ready( () => {
-    return
-    var aiCount = 100
-    var ais = []
-    for (let i = 0; i < aiCount; i++) {
-        ais.push( new SelfDrivingAI({ random: true, val })  )
-        
-    }
-    __SIMULATOR_CANVAS.start(ais)
+    //firstGen()
+    this.fitness++
+    /*
+    for (let i = 0; i < __POPULATION; i++) {
+
+    }*/
+    //__SIMULATOR_CANVAS.start(ais)
 
 })
-
-
-
-
-// Ik wil dat je luisterd naar een document.ready, ofwel
-// $(document),ready( () => { bla code} )
-// Als dit niet begrijpt, ga je maar wat documentatie lezen :)
-// We hebben jQuery tot onze beschikking.
