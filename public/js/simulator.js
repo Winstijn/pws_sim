@@ -355,8 +355,62 @@ class Car {
 
     }
 
+    // Pfft hell of a function
+    // TODO: Uitleggen in het PWS
     calculateDistances(){
-        
+        const halfWidth = this.width / 2
+        const halfHeight = this.height / 2
+
+        // Front, with a (0, 1) vector 
+        // Need to think of a way to richtingsvector.
+        this.sim.canvas.stroke(126)
+        // Wat een clusterfuck
+        // var front = this.calculateDistance( -halfWidth * Math.cos( this.steer ), -halfHeight * Math.sin( this.steer ),  -Math.cos( this.steer ), -Math.sin( this.steer ) )
+        // var left = this.calculateDistance( - halfWidth * Math.cos( this.steer - Math.PI / 2),  -halfHeight * Math.sin( this.steer - Math.PI / 2),  -Math.cos( this.steer - Math.PI / 2 ), -Math.sin( this.steer - Math.PI / 2)  )
+
+        var front = this.calculateDistance( -Math.cos( this.steer ), -Math.sin( this.steer ) )
+        var frontLeft = this.calculateDistance( -Math.cos( this.steer - Math.PI / 4 ), -Math.sin( this.steer - Math.PI / 4))
+        var frontRight = this.calculateDistance( -Math.cos( this.steer + Math.PI / 4 ), -Math.sin( this.steer + Math.PI / 4))
+        var left = this.calculateDistance( -Math.cos( this.steer - Math.PI / 2 ), -Math.sin( this.steer - Math.PI / 2))
+        var right = this.calculateDistance( -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2))
+        // var right = this.calculateDistance( -halfWidth * Math.cos( this.steer +  Math.PI / 2),  -halfHeight * Math.sin( this.steer  + Math.PI / 2),  -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2)  )
+        this.showDebugDistances(front ,frontLeft, frontRight, left, right );
+    }
+
+    showDebugDistances(front ,frontLeft, frontRight, left, right){
+        if (!this.sim.showDebug) return
+        var offset = 11, currentOffset = 10
+        this.sim.canvas.push();
+        this.sim.canvas.textSize(10);
+        this.sim.canvas.fill(255);
+        this.sim.canvas.noStroke();
+        this.sim.canvas.textAlign(this.sim.canvas.RIGHT);
+        this.sim.canvas.text('Car Distances', this.sim.canvas.width - 10, currentOffset += offset);
+        this.sim.canvas.text('front: ' + Math.round(front) , this.sim.canvas.width - 10, currentOffset += offset);
+        this.sim.canvas.text('frontLeft: ' + Math.round(frontLeft) , this.sim.canvas.width - 10, currentOffset += offset);
+        this.sim.canvas.text('frontRight: ' + Math.round(frontRight) , this.sim.canvas.width - 10, currentOffset += offset);
+        this.sim.canvas.text('left: ' + Math.round(left) , this.sim.canvas.width - 10, currentOffset += offset);
+        this.sim.canvas.text('right: ' + Math.round(right) , this.sim.canvas.width - 10, currentOffset += offset);
+        this.sim.canvas.pop();
+
+        // this.sim.canvas.text('Currently inside track: ' + !this.outOfTrack( this.sim.canvas.mouseX, this.sim.canvas.mouseY ) , 10, currentOffset += offset);
+    }
+
+    // Input a richtingsvector and starting point!
+    // Making small steps
+    calculateDistance(vecX, vecY){
+        // Starting point, vec
+        var distance = 0
+        var startX = this.x, startY = this.y
+        var x = startX, y = startY
+
+        while ( !this.sim.outOfTrack( x, y ) ) {
+            x += vecX; y += vecY;
+        }
+        distance = Math.sqrt( Math.pow( startX - x , 2) + Math.pow( startY - y, 2) );
+        this.sim.canvas.line(startX, startY, x, y);
+        return distance
+
     }
 
     checkControls(){
@@ -375,8 +429,9 @@ class Car {
             if (this.sim.canvas.keyIsDown(68)) this.steer += Math.PI / 64
     }
 
+
+    //Collision detection system for the car itself.
     collisionDetection(){
-      //Collision detection system
       var halfWidth = 0.5*this.width;
       var halfHeight = 0.5*this.height;
 
