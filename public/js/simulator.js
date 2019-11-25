@@ -15,10 +15,8 @@ class Simulator {
         this.log("Starting a simulator instance...")
 
         // Canvas variables
-        var initObject = this.createP5InitObject("setup", "draw")
-        this.canvas = new p5( initObject )
-        this.webGL = false
-        this.showDebug = true
+        this.webGL = false;
+        this.showDebug = true;
         this.resolution = {width: 700, height: 700}
 
         // Variables for creations of tracks and cars.
@@ -29,16 +27,22 @@ class Simulator {
         this.backgroundColor = 120
         this.trackIndex = 0
         this.editingTrack = true
-        this.frameRate = 60
-        this.casualties = 0
+        this.frameRate = 120
+        this.casualties = 0;
+        this.sensors= [];
 
+        var initObject = this.createP5InitObject("setup", "draw");
+        this.canvas = new p5( initObject );
 
         this.log("Finished initializing the simulator!")
+
     }
 
     // Setup of the p5.js instance.
-    setup(){
+    setup(pc){
         this.log("p5.js libary setting up!")
+        this.canvas = pc;
+
         this.canvas.createCanvas( this.resolution.width , this.resolution.height , this.webGL ? "webgl" : 'p2d');
         this.canvas.frameRate(this.frameRate);
 
@@ -257,9 +261,9 @@ class Simulator {
     // PERFECT USE OF JAVASCRIPT!
     createP5InitObject(...functions){
         return pc => {
-            functions.forEach( name => {
-                if (this[name]) pc[name] = () => this[name]()
-            })
+          functions.forEach( name => {
+              if (this[name]) pc[name] = () => this[name](pc)
+          })
         }
     }
 
