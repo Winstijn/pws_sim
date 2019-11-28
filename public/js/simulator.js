@@ -65,13 +65,10 @@ class Simulator {
     }
 
     drawCars(){
-        // debugging only
         var mouseOnCanvas = this.canvas.mouseX > 0 & this.canvas.mouseX < this.resolution.width && this.canvas.mouseY > 0 && this.canvas.mouseY < this.resolution.height;
 
-        if (!this.editingTrack && this.canvas.mouseIsPressed && !this.cars[0] && mouseOnCanvas){
-             for (let i = 0; i < __POPULATION; i++) {
-                this.cars[0] = new Car(this, undefined, this.canvas.mouseX, this.canvas.mouseY);
-            }
+        if (!this.editingTrack && this.canvas.mouseIsPressed && mouseOnCanvas){
+          firstGen();
         }
         for (let i = 0; i < this.cars.length; i++) {
             this.cars[i].draw();
@@ -274,11 +271,16 @@ class Simulator {
 class Car {
 
     // Input should be an object.
-    constructor(sim, ai, x, y, color = 20){
+    constructor(sim, ai, x, y, color){
         // console.log(x)
         this.sim = sim;
-        this.isAlive = true
-        this.ai = new DrivingAI({ car: this });
+        this.isAlive = true;
+        if (ai) {
+          this.ai = ai;
+          this.ai.car = this;
+        } else {
+          this.ai = new DrivingAI( { in_nodes:7, hidden_nodes:8, output_nodes:2, car: this } );
+        }
         this.x = Math.round(x);
         this.y = Math.round(y);
         this.velocityX = 0; // In Pixels per Frame.
@@ -289,9 +291,14 @@ class Car {
         this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
         this.standardAccel = 2
 
-        this.color = color
+        if (color) {
+          this.color = color;
+        } else{
+          this.color = 20
+        }
         this.width = 20
         this.height = 30
+
 
         // Still needs to be thought of!
         this.steer = Math.PI / 2 // Radians!
@@ -317,7 +324,7 @@ class Car {
         this.calculateDistances();
 
         // Controlling one vehicle with the keys!
-        this.checkControls();
+        //this.checkControls();
         this.ai.predictDrive();
 
         // Updating pixelPositions and values.
@@ -377,6 +384,8 @@ class Car {
         var frontRight = this.calculateDistance( -Math.cos( this.steer + Math.PI / 4 ), -Math.sin( this.steer + Math.PI / 4))
         var left = this.calculateDistance( -Math.cos( this.steer - Math.PI / 2 ), -Math.sin( this.steer - Math.PI / 2))
         var right = this.calculateDistance( -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2))
+
+        this.sensors = [front, frontLeft, frontRight, left, right]
         // var right = this.calculateDistance( -halfWidth * Math.cos( this.steer +  Math.PI / 2),  -halfHeight * Math.sin( this.steer  + Math.PI / 2),  -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2)  )
         this.showDebugDistances(front ,frontLeft, frontRight, left, right );
     }
@@ -467,9 +476,19 @@ class Car {
         if (__SIMULATOR.outOfTrack(point.x, point.y)) {
           this.isAlive = false;
           __SIMULATOR.casualties += 1
+          addNN(this);
           break;
         }
       }
+
+      let minSpeed = (Math.abs(this.velocityX) + Math.abs(this.velocityY));
+      if (this.isAlive && this.ai && this.ai.fitness > 20 && minSpeed < 0.5) {
+          this.isAlive = false;
+          __SIMULATOR.casualties += 1
+          addNN(this);
+          console.log("Someone was too slow")
+      }
+
     }
 
 }

@@ -131,6 +131,21 @@ class Matrix {
     matrix.data = data.data;
     return matrix;
   }
+
+  combine(b){
+    let aM = this.copy();
+    let bM = b.copy();
+    let arraySize = aM.data.length / 2;
+    if (aM.data.length != bM.data.length) {
+      console.log("Array's need to be the same size");
+    } else {
+      for (var i = 0; i < aM.data.length/2; i++) {
+        aM.data[arraySize] = bM.data[arraySize];
+        arraySize++
+      }
+    }
+    return aM;
+  }
 }
 
 if (typeof module !== 'undefined') {

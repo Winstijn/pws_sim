@@ -24,7 +24,7 @@ class NeuralNetwork {
   * USAGE: cloned_nn = new NeuralNetwork(to_clone_nn);
   */
   constructor(in_nodes, hid_nodes, out_nodes) {
-    if (in_nodes instanceof NeuralNetwork) {
+    if (in_nodes instanceof NeuralNetwork || in_nodes instanceof DrivingAI) {
       let a = in_nodes;
       this.input_nodes = a.input_nodes;
       this.hidden_nodes = a.hidden_nodes;
@@ -165,13 +165,26 @@ class NeuralNetwork {
   copy() {
     return new NeuralNetwork(this);
   }
-
   // Accept an arbitrary function for mutation
   mutate(func) {
-    this.weights_ih.map(func);
-    this.weights_ho.map(func);
-    this.bias_h.map(func);
-    this.bias_o.map(func);
+    switch (Math.floor(Math.random() * 4)) {
+      case 1:
+        this.weights_ih.map(func);
+        console.log("Mutation took place");
+        break;
+      case 1:
+        this.weights_ho.map(func);
+        console.log("Mutation took place");
+        break;
+      case 2:
+        this.bias_h.map(func);
+        console.log("Mutation took place");
+        break;
+      case 3:
+        this.bias_o.map(func);
+        console.log("Mutation took place");
+        break;
+    }
   }
 
 

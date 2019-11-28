@@ -46,8 +46,8 @@ class DrivingAI extends NeuralNetwork {
           this.fitness++;
           this.dDistance += Math.abs(this.car.accel);
 
-          console.log(`Fitness: ${this.fitness}`);
-          console.log(`Distance traveled: ${this.dDistance}`);
+          //console.log(`Fitness: ${this.fitness}`);
+          //console.log(`Distance traveled: ${this.dDistance}`);
 
         }
     }
@@ -69,36 +69,67 @@ function firstGen() {
 
 function nextGen(){
   let sortedArray = [];
+  let evolvedArray = [];
   if (__NEURALNETWORKS.length > 1) {
-    console.log("dies reon");
     sortedArray = selectionSort(__NEURALNETWORKS);
+    evolvedArray = evolveGen(sortedArray);
   } else {
-    sortedArray = __NEURALNETWORKS;
+    evolvedArray = __NEURALNETWORKS;
   }
   __NEURALNETWORKS = [];
-  testNN = sortedArray[0];
+  //testNN = sortedArray[0];
 
-  evolveGen();
 
 __SIMULATOR.cars = []
   for (let i = 0; i < __POPULATION; i++) {
-    let multiplyer = Math.random();
-    let coppiedNN = sortedArray[i].copy();
-    //coppiedNN.mutate(x => x);
-    coppiedNN.mutate(x => x);
-     __SIMULATOR.cars[i] = new Car(__SIMULATOR, coppiedNN, __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
+    let coppiedNN = evolvedArray[i];
+    let randomNmbr = Math.random();
+    if (randomNmbr < 1) {
+      let multiplyer = __SIMULATOR.canvas.random(-1, 1);
+      coppiedNN.mutate(x => x*multiplyer);
+    }
+
+     __SIMULATOR.cars[i] = new Car(__SIMULATOR, evolvedArray[i], __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
    }
+   //__SIMULATOR.cars[0] = new Car(__SIMULATOR, sortedArray[0].copy(), __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y, 180);
+    //let newNN = crossOver(sortedArray[0], sortedArray[1]);
    //__SIMULATOR.cars.unshift(new Car(__SIMULATOR, testNN.copy(), __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y, 200))
-
 }
 
-function evolveGen(){
-  for (var i = 0; i < __NEURALNETWORKS.length; i++) {
+function evolveGen(arr){
+  let n = __POPULATION;
+  let evolvedGen = [];
+  let evolveable = Math.floor((1 + Math.sqrt(8*n))/2);
+  let survivors = arr.slice(0, evolveable+1);
+  let crossOverPotential = (evolveable*(evolveable -1))/2;
+  let multiplyer = __SIMULATOR.canvas.random(-0.1, 0.1);
 
+  if (crossOverPotential < n) {
+    let difference = n - crossOverPotential;
+    for (var i = 0; i < difference; i++) {
+      let bestNN = arr[0].copy();
+      bestNN.mutate(x => x * multiplyer)
+      evolvedGen.push(bestNN)
+    }
   }
-
+  for (var i = 0; i < survivors.length-1; i++) {
+    for (var j = i+1; j < survivors.length; j++) {
+      evolvedGen.push(crossOver(arr[i], arr[j]));
+    }
+  }
+  return evolvedGen;
 }
 
+function crossOver(a, b) {
+  let networkA = a.copy();
+  let networkB = b.copy();
+
+  networkA.bias_h = networkA.bias_h.combine(networkB.bias_h);
+  networkA.bias_o = networkA.bias_o.combine(networkB.bias_o);
+  networkA.weights_ho = networkA.weights_ho.combine(networkB.weights_ho);
+  networkA.weights_ih = networkA.weights_ih.combine(networkB.weights_ih);
+  return networkA;
+}
 //Source https://khan4019.github.io/front-end-Interview-Questions/sort.html
 function selectionSort(arr){
   var minIdx, temp,
