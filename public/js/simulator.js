@@ -42,12 +42,22 @@ class Simulator {
         this.canvas.createCanvas( this.resolution.width , this.resolution.height , this.webGL ? "webgl" : 'p2d');
         this.canvas.frameRate(this.frameRate);
 
+        if (this.webGL) {
+            this.fontRegular = this.canvas.loadFont('fonts/Regular.otf');
+            this.canvas.textFont(this.fontRegular)
+        }
+
         $("#center").append(this.canvas.canvas)
     }
 
     // Called everytime a frame needs to be rendered.
     // For documentation about drawing you can look up p5.js.
     // Never forget that order of render is important!
+
+    // TODO:
+    // THIS BREAKS PERFORMANCE?
+    // var pixels = __SIMULATOR.canvas.drawingContext.getImageData(0, 0, __SIMULATOR.canvas.width * __SIMULATOR.canvas.pixelDensity(), __SIMULATOR.canvas.height * __SIMULATOR.canvas.pixelDensity());
+
     draw(){
         if (this.webGL) this.canvas.translate(-0.5 * this.canvas.width, -0.5 * this.canvas.height)
         // this.editingTrack ? this.canvas.noCursor() : this.canvas.cursor();
@@ -150,6 +160,12 @@ class Simulator {
         this.drawTrack();
 
         this.canvas.loadPixels();
+        // drawingContext.getImageData(0, 0, width * pixelDensity(), height * pixelDensity());
+        // Happens in code, but why does it slow down when called?
+        
+        // Also slows down?
+        // var pixels = this.canvas.drawingContext.getImageData(0, 0, this.canvas.width * this.canvas.pixelDensity(), this.canvas.height * this.canvas.pixelDensity());
+
         this.log('Saving all the rendered pixels to save and reduce calculation overhead.')
         // pixelDensity() * pixelDensity() * 700x700 *
         // length of array from the trackPixels.
@@ -163,7 +179,7 @@ class Simulator {
 
     // TODO: make track downloadable!
     importTrack(trackJSON){
-        const trackId = this.tracks.length - 1;
+        const trackId = this.tracks.length == 0 ? 0 : this.tracks.length - 1;
         const json = JSON.parse(trackJSON);
         const track = [];
 
@@ -212,6 +228,13 @@ class Simulator {
             for (let x = 0; x < this.resolution.width; x++) {
                 // TODO: Golden line and should be mentioned in the PWS!
                 // A sort of translation key between the two arrays.
+
+                if (this.webGL){
+                    // WebGL had a differnt viewbuffer coordinate system.
+                    // Begins in the left bottom corner.
+                    reduced[y * this.resolution.width + x] = pixels[ (pixels.length - y * pixelDensity * pixelDensity * 4 * this.resolution.width) + x * pixelDensity * 4 ]
+                } else {
+                    // Begins in the left top corner.
                 reduced[y * this.resolution.width + x] = pixels[ y * pixelDensity * pixelDensity * 4 * this.resolution.width + x * pixelDensity * 4 ]
 
                 // TODO: Use bits instead of 8 bytes in __TRACK_PIXELS
