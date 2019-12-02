@@ -144,20 +144,11 @@ class NeuralNetwork {
   }
 
   serialize() {
-    return JSON.stringify(this);
-  }
-
-  static deserialize(data) {
-    if (typeof data == 'string') {
-      data = JSON.parse(data);
-    }
-    let nn = new NeuralNetwork(data.input_nodes, data.hidden_nodes, data.output_nodes);
-    nn.weights_ih = Matrix.deserialize(data.weights_ih);
-    nn.weights_ho = Matrix.deserialize(data.weights_ho);
-    nn.bias_h = Matrix.deserialize(data.bias_h);
-    nn.bias_o = Matrix.deserialize(data.bias_o);
-    nn.learning_rate = data.learning_rate;
-    return nn;
+    copyAI = this.copy();
+    delete copyAI.sim;
+    delete copyAI.car;
+    let temp = JSON.stringify(this);
+    return temp;
   }
 
 
@@ -166,27 +157,47 @@ class NeuralNetwork {
     return new NeuralNetwork(this);
   }
   // Accept an arbitrary function for mutation
-  mutate(func) {
-    switch (Math.floor(Math.random() * 4)) {
-      case 1:
-        this.weights_ih.map(func);
-        console.log("Mutation took place");
-        break;
-      case 1:
-        this.weights_ho.map(func);
-        console.log("Mutation took place");
-        break;
-      case 2:
-        this.bias_h.map(func);
-        console.log("Mutation took place");
-        break;
-      case 3:
-        this.bias_o.map(func);
-        console.log("Mutation took place");
-        break;
+  mutate() {
+    for (var i = 0; i < Math.round(Math.random() * 4); i++) {
+      switch (Math.floor(Math.random() * 4)) {
+        case 0:
+          this.weights_ih.chanceMap();
+          break;
+        case 1:
+          this.weights_ho.chanceMap();
+          break;
+        case 2:
+          this.bias_h.chanceMap();
+          break;
+        case 3:
+          this.bias_o.chanceMap();
+          break;
+      }
     }
   }
 
+  mutateAll(m) {
+    this.weights_ih.chanceMap(m);
+    this.weights_ho.chanceMap(m);
+    this.bias_h.chanceMap(m);
+    this.bias_o.chanceMap(m);
+  }
 
 
+}
+
+function deserialize(data) {
+  if (typeof data == 'string') {
+    data = JSON.parse(data);
+  }
+  let nn = new DrivingAI(data.input_nodes, data.hidden_nodes, data.output_nodes);
+  nn.input_nodes = data.input_nodes;
+  nn.hidden_nodes = data.hidden_nodes;
+  nn.output_nodes = data.output_nodes;
+  nn.weights_ih = Matrix.deserialize(data.weights_ih);
+  nn.weights_ho = Matrix.deserialize(data.weights_ho);
+  nn.bias_h = Matrix.deserialize(data.bias_h);
+  nn.bias_o = Matrix.deserialize(data.bias_o);
+  //nn.learning_rate = data.learning_rate;
+  return nn;
 }

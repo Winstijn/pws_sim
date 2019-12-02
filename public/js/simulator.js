@@ -26,10 +26,11 @@ class Simulator {
         this.circleRadius = 90
         this.backgroundColor = 120
         this.trackIndex = 0
-        this.editingTrack = true
-        this.frameRate = 120
+        this.editingTrack = true;
+        this.paused = false;
+        this.frameRate = 60
         this.casualties = 0;
-        this.sensors= [];
+        this.generation = 1;
 
         var initObject = this.createP5InitObject("setup", "draw");
         this.canvas = new p5( initObject );
@@ -86,6 +87,8 @@ class Simulator {
         this.canvas.text('fps: ' + Math.round(this.canvas.frameRate()), 10, currentOffset += offset);
         this.canvas.text('mouseX: ' + Math.round(this.canvas.mouseX) + ", mouseY: " + Math.round(this.canvas.mouseY), 10, currentOffset += offset);
         this.canvas.text('Currently inside track: ' + !this.outOfTrack( this.canvas.mouseX, this.canvas.mouseY ) , 10, currentOffset += offset);
+        this.canvas.text('Generation: ' + this.generation, 10, currentOffset += offset);
+
         if (this.editingTrack) this.canvas.text('TRACK_EDITING MODE', 10, currentOffset += offset);
     }
 
@@ -309,26 +312,34 @@ class Car {
     // Watch out and test before changing something here.
     draw(){
         // If it's dead, don't render it.
-        if(!this.isAlive) return 
-        
+        if(!this.isAlive) return
+
         // Check if car is in a wall, because we kill it, if it is!
         this.collisionDetection();
 
         this.sim.canvas.fill(this.color);
         // this.sim.canvas.translate( Math.cos(this.steer), Math.sin(this.steer) )
-        
-        // Drawing actual car at X and Y positions  
+
+        // Drawing actual car at X and Y positions
         this.drawCar();
 
-        // Calculate distances from the walls!
-        this.calculateDistances();
+        if (!__SIMULATOR.paused){
+          // Calculate distances from the walls!
+          this.calculateDistances();
 
-        // Controlling one vehicle with the keys!
-        //this.checkControls();
-        this.ai.predictDrive();
+          // Controlling one vehicle with the keys!
+          //this.checkControls();
+          this.ai.predictDrive();
 
-        // Updating pixelPositions and values.
-        this.updatePhysics();
+          // Updating pixelPositions and values.
+          this.updatePhysics();
+        }
+        if (__SELECTEDNN != undefined && __SIMULATOR.paused && __SIMULATOR.cars[__SELECTEDNN] == this) {
+          console.log("color");
+          this.color = 100;
+        } else {
+          this.color = 20;
+        }
     }
 
     drawCar(){
@@ -372,7 +383,7 @@ class Car {
         const halfWidth = this.width / 2
         const halfHeight = this.height / 2
 
-        // Front, with a (0, 1) vector 
+        // Front, with a (0, 1) vector
         // Need to think of a way to richtingsvector.
         this.sim.canvas.stroke(126)
         // Wat een clusterfuck
@@ -387,7 +398,7 @@ class Car {
 
         this.sensors = [front, frontLeft, frontRight, left, right]
         // var right = this.calculateDistance( -halfWidth * Math.cos( this.steer +  Math.PI / 2),  -halfHeight * Math.sin( this.steer  + Math.PI / 2),  -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2)  )
-        this.showDebugDistances(front ,frontLeft, frontRight, left, right );
+        //this.showDebugDistances(front ,frontLeft, frontRight, left, right );
     }
 
     showDebugDistances(front ,frontLeft, frontRight, left, right){
@@ -421,7 +432,7 @@ class Car {
             x += vecX; y += vecY;
         }
         distance = Math.sqrt( Math.pow( startX - x , 2) + Math.pow( startY - y, 2) );
-        this.sim.canvas.line(startX, startY, x, y);
+        //this.sim.canvas.line(startX, startY, x, y);
         return distance
 
     }
@@ -482,7 +493,7 @@ class Car {
       }
 
       let minSpeed = (Math.abs(this.velocityX) + Math.abs(this.velocityY));
-      if (this.isAlive && this.ai && this.ai.fitness > 20 && minSpeed < 0.5) {
+      if (this.isAlive && this.ai && this.ai.fitness > 20 && minSpeed < 1) {
           this.isAlive = false;
           __SIMULATOR.casualties += 1
           addNN(this);
@@ -496,11 +507,11 @@ class Car {
 
 $(document).ready( () => {
     __SIMULATOR = new Simulator();
-    __POPULATION = 1;
+    __POPULATION = 50;
 
 
     // For debugging:
-    __SIMULATOR.importTrack(testTrack);
+    __SIMULATOR.importTrack(testTrack2);
     setTimeout( () => __SIMULATOR.saveCurrentTrack(), 200)
 })
 
