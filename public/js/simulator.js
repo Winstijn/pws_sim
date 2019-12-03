@@ -17,12 +17,13 @@ class Simulator {
         // Canvas variables
         var initObject = this.createP5InitObject("setup", "draw")
         this.canvas = new p5( initObject )
-        this.webGL = false
+        this.webGL = true
         this.showDebug = true
         this.resolution = {width: 700, height: 700}
 
         // Variables for creations of tracks and cars.
         this.tracks = []
+        this.trackPoints = []
         this.cars = []
         this.trackColor = 255
         this.circleRadius = 90
@@ -91,10 +92,10 @@ class Simulator {
         this.canvas.textSize(10);
         this.canvas.fill(255);
         this.canvas.noStroke();
-        this.canvas.text('wingine v0.2.1', 10, currentOffset += offset);
+        this.canvas.text('wingine v0.4.1', 10, currentOffset += offset);
         this.canvas.text('fps: ' + Math.round(this.canvas.frameRate()), 10, currentOffset += offset);
-        this.canvas.text('mouseX: ' + Math.round(this.canvas.mouseX) + ", mouseY: " + Math.round(this.canvas.mouseY), 10, currentOffset += offset);
-        this.canvas.text('Currently inside track: ' + !this.outOfTrack( this.canvas.mouseX, this.canvas.mouseY ) , 10, currentOffset += offset);
+        // this.canvas.text('mouseX: ' + Math.round(this.canvas.mouseX) + ", mouseY: " + Math.round(this.canvas.mouseY), 10, currentOffset += offset);
+        // this.canvas.text('Currently inside track: ' + !this.outOfTrack( this.canvas.mouseX, this.canvas.mouseY ) , 10, currentOffset += offset);
         if (this.editingTrack) this.canvas.text('TRACK_EDITING MODE', 10, currentOffset += offset);
     }
 
@@ -112,18 +113,35 @@ class Simulator {
             this.canvas.circle(c[0], c[1], this.circleRadius, this.circleRadius)
         }
 
-        // Disabled for now!
-        // Lines between the circles!
-        if (this.showDebug && false) {
-            for (let i = 0; i < this.tracks[this.trackIndex].length; i++) {
-                const c = this.tracks[this.trackIndex][i]
-                const nextC = this.tracks[this.trackIndex][i + 1]
-                if (nextC) {
-                    this.canvas.stroke(20);
-                    this.canvas.fill(70)
-                    this.canvas.line(c[0], c[1], nextC[0], nextC[1])
+        // For sectioning the car!
+        if (this.showDebug && this.trackPoints.length > 0) {
+            this.canvas.push()
+            this.canvas.stroke('purple');
+            this.canvas.strokeWeight(10); // Make the points 10 pixels in size
+             
+            var lowestDistance = Infinity
+            var closestPoint
+            for (let i = 0; i < this.trackPoints.length; i++) {
+                const point = this.trackPoints[i];
+
+                // Testing the distance methods.
+                if (this.cars[0] && this.cars.length == 1){
+                    const car = this.cars[0]
+                    const distanceToCar = Math.pow(point[0] - car.x, 2) + Math.pow(point[1] - car.y, 2) 
+                    if (distanceToCar < lowestDistance) {
+                        lowestDistance = distanceToCar
+                        closestPoint = point
+                    }
                 }
-            }
+                
+                this.canvas.point(point[0], point[1]);
+            }    
+
+            this.canvas.stroke('orange');
+            this.canvas.strokeWeight(20); 
+            if (closestPoint) this.canvas.point(closestPoint[0], closestPoint[1]);
+
+            this.canvas.pop();
         }
     }
 
@@ -171,6 +189,9 @@ class Simulator {
         // length of array from the trackPixels.
         __TRACK_INDEX = this.trackIndex
         __TRACK_PIXELS = this.reduceTrackPixels(this.canvas.pixels)
+
+        // Separates the track in multiple points
+        this.calculateTrackPoints();
 
         this.editingTrack = false
         // alert("Saved track!");
@@ -235,8 +256,9 @@ class Simulator {
                     reduced[y * this.resolution.width + x] = pixels[ (pixels.length - y * pixelDensity * pixelDensity * 4 * this.resolution.width) + x * pixelDensity * 4 ]
                 } else {
                     // Begins in the left top corner.
-                reduced[y * this.resolution.width + x] = pixels[ y * pixelDensity * pixelDensity * 4 * this.resolution.width + x * pixelDensity * 4 ]
-
+                    reduced[y * this.resolution.width + x] = pixels[ y * pixelDensity * pixelDensity * 4 * this.resolution.width + x * pixelDensity * 4 ]
+                }
+                
                 // TODO: Use bits instead of 8 bytes in __TRACK_PIXELS
                 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators
                 // In the future uses flags and store as single bits, 0 or 1.
@@ -247,6 +269,30 @@ class Simulator {
         return reduced
     }
 
+    calculateTrackPoints(){
+        var circles = this.tracks[this.trackIndex].slice()
+        var points = []
+        for (let i = 0; i < circles.length; i++) {
+            const point = circles[i]
+            var distanceNextPoint = 0
+            var pointIndex = i
+            var allPointsFinished = false
+            var possibleNextPoint
+            while (distanceNextPoint < this.circleRadius / 6 && !allPointsFinished) {
+                pointIndex++
+                possibleNextPoint = circles[pointIndex]
+                if (possibleNextPoint) distanceNextPoint = Math.round( Math.sqrt(  Math.pow(Math.round(point[0] - possibleNextPoint[0]), 2 )  + Math.pow(Math.round(point[1] - possibleNextPoint[1]), 2 ) ) )
+                if (!possibleNextPoint) allPointsFinished = true
+            }
+
+            if (possibleNextPoint) {
+                points.push(possibleNextPoint)
+            }
+            i = pointIndex
+        }
+        this.trackPoints = points
+        return points
+    }
 
     // Important function!
     // Declares if coordinate is in track or not!
@@ -397,7 +443,7 @@ class Car {
         var left = this.calculateDistance( -Math.cos( this.steer - Math.PI / 2 ), -Math.sin( this.steer - Math.PI / 2))
         var right = this.calculateDistance( -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2))
         // var right = this.calculateDistance( -halfWidth * Math.cos( this.steer +  Math.PI / 2),  -halfHeight * Math.sin( this.steer  + Math.PI / 2),  -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2)  )
-        this.showDebugDistances(front ,frontLeft, frontRight, left, right );
+        // this.showDebugDistances(front ,frontLeft, frontRight, left, right );
     }
 
     showDebugDistances(front ,frontLeft, frontRight, left, right){
@@ -497,7 +543,6 @@ class Car {
 $(document).ready( () => {
     __SIMULATOR = new Simulator();
     __POPULATION = 1;
-
 
     // For debugging:
     __SIMULATOR.importTrack(testTrack);
