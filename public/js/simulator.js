@@ -16,6 +16,7 @@ class Simulator {
 
         // Canvas variables
         this.webGL = true
+        this.trainingMode = true
         this.showDebug = true
         this.resolution = {width: 700, height: 700}
 
@@ -79,7 +80,8 @@ class Simulator {
         var mouseOnCanvas = this.canvas.mouseX > 0 & this.canvas.mouseX < this.resolution.width && this.canvas.mouseY > 0 && this.canvas.mouseY < this.resolution.height;
 
         if (!this.editingTrack && this.canvas.mouseIsPressed && mouseOnCanvas){
-          firstGen();
+          this.setSpawnPoint();
+          this.trainingMode ? firstGen() : this.spawnControlableCar()
         }
         for (let i = 0; i < this.cars.length; i++) {
             this.cars[i].draw();
@@ -97,8 +99,9 @@ class Simulator {
         this.canvas.text('fps: ' + Math.round(this.canvas.frameRate()), 10, currentOffset += offset);
         // this.canvas.text('mouseX: ' + Math.round(this.canvas.mouseX) + ", mouseY: " + Math.round(this.canvas.mouseY), 10, currentOffset += offset);
         // this.canvas.text('Currently inside track: ' + !this.outOfTrack( this.canvas.mouseX, this.canvas.mouseY ) , 10, currentOffset += offset);
-        this.canvas.text('Generation: ' + this.generation, 10, currentOffset += offset);
-
+        if (!this.trainingMode && this.cars.length > 0) this.canvas.text('Sector: ' + this.cars[0].currentSector, 10, currentOffset += offset);
+        if (!this.trainingMode && this.cars.length > 0) this.canvas.text('FREEMODE', 10, currentOffset += offset);
+        if (this.trainingMode) this.canvas.text('Generation: ' + this.generation, 10, currentOffset += offset);
         if (this.editingTrack) this.canvas.text('TRACK_EDITING MODE', 10, currentOffset += offset);
     }
 
@@ -116,33 +119,39 @@ class Simulator {
             this.canvas.circle(c[0], c[1], this.circleRadius, this.circleRadius)
         }
 
-        // For sectioning the car!
+        // For drawing the points on the track that make out the sectors.
         if (this.showDebug && this.trackPoints.length > 0) {
             this.canvas.push()
-            this.canvas.stroke('purple');
-            this.canvas.strokeWeight(10); // Make the points 10 pixels in size
-             
-            var lowestDistance = Infinity
-            var closestPoint
+  
             for (let i = 0; i < this.trackPoints.length; i++) {
-                const point = this.trackPoints[i];
-
-                // Testing the distance methods.
-                if (this.cars[0] && this.cars.length == 1){
-                    const car = this.cars[0]
-                    const distanceToCar = Math.pow(point[0] - car.x, 2) + Math.pow(point[1] - car.y, 2) 
-                    if (distanceToCar < lowestDistance) {
-                        lowestDistance = distanceToCar
-                        closestPoint = point
-                    }
+                const point = this.trackPoints[i]
+             
+                const setPointStroke = () => {
+                    this.canvas.stroke('purple');
+                    this.canvas.strokeWeight(10);       
                 }
-                
-                this.canvas.point(point[0], point[1]);
+                setPointStroke();
+        
+                if (this.spawnPoint && i == this.spawnPoint.sectorID) {
+                    // Ik weet het lelijke code, maar anders kon ik de kleur niet veranderen.
+                    // Kleur voor de spawnpoint
+                    this.canvas.stroke('magenta');
+                    this.canvas.strokeWeight(20);
+                    this.canvas.point(point[0], point[1]);
+                    setPointStroke();
+                } else {
+                    this.canvas.point(point[0], point[1]);
+                }
             }    
 
-            this.canvas.stroke('orange');
-            this.canvas.strokeWeight(20); 
-            if (closestPoint) this.canvas.point(closestPoint[0], closestPoint[1]);
+            // Kleur voor de huidige sector punt.
+            if (this.cars.length > 0 && !this.trainingMode) {
+                this.canvas.stroke('orange');
+                this.canvas.strokeWeight(20);
+             
+                const closestPoint = this.findClosestSector(this.cars[0].x, this.cars[0].y);
+                this.canvas.point(closestPoint[0], closestPoint[1]);    
+            }
 
             this.canvas.pop();
         }
@@ -281,7 +290,7 @@ class Simulator {
             var pointIndex = i
             var allPointsFinished = false
             var possibleNextPoint
-            while (distanceNextPoint < this.circleRadius / 6 && !allPointsFinished) {
+            while (distanceNextPoint < this.circleRadius / 16 && !allPointsFinished) {
                 pointIndex++
                 possibleNextPoint = circles[pointIndex]
                 if (possibleNextPoint) distanceNextPoint = Math.round( Math.sqrt(  Math.pow(Math.round(point[0] - possibleNextPoint[0]), 2 )  + Math.pow(Math.round(point[1] - possibleNextPoint[1]), 2 ) ) )
@@ -311,8 +320,46 @@ class Simulator {
         return __TRACK_PIXELS[ Math.round(x) + Math.round(y) * this.resolution.width] == this.backgroundColor
     }
 
+    setSpawnPoint(){
+        if (!this.spawnPoint) {
+            if (this.trackPoints.length == 0) { alert("Track Point are not calculated"); return}
+            const point = this.findClosestSector(__SIMULATOR.canvas.mouseX, __SIMULATOR.canvas.mouseY);
+            this.spawnPoint = {
+                x: point[0],
+                y: point[1],
+                sectorID: this.trackPoints.indexOf(point)
+              }
+        }
+    }
+
+    findClosestSector(x, y){
+        if (!this.trackPoints) return "No track points."
+
+        var lowestDistance = Infinity
+        var closestPoint = [0,0]
+        for (let i = 0; i < this.trackPoints.length; i++) {
+            const point = this.trackPoints[i];
+
+            // Testing the distance methods.
+            const distanceToCar = Math.pow(point[0] - x, 2) + Math.pow(point[1] - y, 2) 
+            if (distanceToCar < lowestDistance) {
+                lowestDistance = distanceToCar
+                closestPoint = point
+            }
+        }    
+        // debugger
+        return closestPoint
+    }
+
+
     // #endregion Track Logic
 
+   
+    spawnControlableCar(){
+        // if (this.cars.length == 0){
+            this.cars[0] = new Car(__SIMULATOR, undefined, __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
+        // }
+    }
 
     // Fyor gives me his Generation instance.
     trainGeneration(generation) {
@@ -357,16 +404,15 @@ class Car {
         this.velocityX = 0; // In Pixels per Frame.
         this.velocityY = 0; // in Pixels per Frame.
         this.accel = 0 // In Pixels per Frame per Frame
+        this.currentSector = 0
+        this.sectorTime = 0 
 
         // Needs to be recalculated for in the real world!
         this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
         this.standardAccel = 2
 
-        if (color) {
-          this.color = color;
-        } else{
-          this.color = 20
-        }
+        this.color = color || 20;
+        
         this.width = 20
         this.height = 30
 
@@ -384,9 +430,7 @@ class Car {
 
         // Check if car is in a wall, because we kill it, if it is!
         this.collisionDetection();
-
         this.sim.canvas.fill(this.color);
-        // this.sim.canvas.translate( Math.cos(this.steer), Math.sin(this.steer) )
 
         // Drawing actual car at X and Y positions
         this.drawCar();
@@ -394,20 +438,15 @@ class Car {
         if (!__SIMULATOR.paused){
           // Calculate distances from the walls!
           this.calculateDistances();
+          this.findCurrentSector();
 
           // Controlling one vehicle with the keys!
-          //this.checkControls();
-          this.ai.predictDrive();
+          this.sim.trainingMode ? this.ai.predictDrive() : this.checkControls()
 
           // Updating pixelPositions and values.
           this.updatePhysics();
         }
-        if (__SELECTEDNN != undefined && __SIMULATOR.paused && __SIMULATOR.cars[__SELECTEDNN] == this) {
-          console.log("color");
-          this.color = 100;
-        } else {
-          this.color = 20;
-        }
+        
     }
 
     drawCar(){
@@ -466,7 +505,7 @@ class Car {
 
         this.sensors = [front, frontLeft, frontRight, left, right]
         // var right = this.calculateDistance( -halfWidth * Math.cos( this.steer +  Math.PI / 2),  -halfHeight * Math.sin( this.steer  + Math.PI / 2),  -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2)  )
-        //this.showDebugDistances(front ,frontLeft, frontRight, left, right );
+        if (!this.sim.trainingMode) this.showDebugDistances(front ,frontLeft, frontRight, left, right );
     }
 
     showDebugDistances(front ,frontLeft, frontRight, left, right){
@@ -500,9 +539,37 @@ class Car {
             x += vecX; y += vecY;
         }
         distance = Math.sqrt( Math.pow( startX - x , 2) + Math.pow( startY - y, 2) );
-        //this.sim.canvas.line(startX, startY, x, y);
+        if (!this.sim.trainingMode)this.sim.canvas.line(startX, startY, x, y);
         return distance
 
+    }
+
+    // Really important for AI!
+    findCurrentSector(){
+        const closestPoint = this.sim.findClosestSector(this.x, this.y)
+        const pointID = this.sim.trackPoints.indexOf(closestPoint)
+        const spawnSector = this.sim.spawnPoint.sectorID
+        const relativeIndex = pointID - spawnSector
+        const oldSector = this.currentSector
+        this.currentSector = relativeIndex >= 0 ? relativeIndex : relativeIndex + this.sim.trackPoints.length 
+
+        // When AI is sneaky and tries to go reverse! 
+        // TODO: Describe in PWS. 
+        // Cars will turns backwards for more points! Sneaaaky
+        if (this.sim.trainingMode && (this.currentSector < oldSector || (oldSector == 0 && this.currentSector == this.sim.trackPoints.length - 1))){
+            console.log("SNEAKY BITCH!")
+            this.isAlive = false
+            this.sim.casualties += 1
+            this.currentSector = oldSector
+            return
+        }
+
+        // Registeren wanneer ze in de sector zijn. 
+        if (this.currentSector != oldSector){
+            this.sectorTime = this.ai.framesAlive || 0
+        }
+            
+        return this.currentSector
     }
 
     checkControls(){
@@ -554,18 +621,19 @@ class Car {
       for(point of points){
         if (__SIMULATOR.outOfTrack(point.x, point.y)) {
           this.isAlive = false;
+          if (!this.sim.trainingMode) setTimeout(this.sim.spawnControlableCar.bind(this.sim), 500)
           __SIMULATOR.casualties += 1
           addNN(this);
           break;
         }
       }
 
-      let minSpeed = (Math.abs(this.velocityX) + Math.abs(this.velocityY));
-      if (this.isAlive && this.ai && this.ai.fitness > 20 && minSpeed < 1) {
+      let minSpeed = Math.pow(this.velocityX, 2) + Math.pow(this.velocityY, 2)
+      if (this.isAlive && this.ai && this.ai.framesAlive > 20 && minSpeed < 0.5) {
           this.isAlive = false;
           __SIMULATOR.casualties += 1
           addNN(this);
-          console.log("Someone was too slow")
+          console.log("[Car] I drove too slow! I got killed.")
       }
 
     }
@@ -575,10 +643,10 @@ class Car {
 
 $(document).ready( () => {
     __SIMULATOR = new Simulator();
-    __POPULATION = 50;
+    __POPULATION = 100;
 
     // For debugging:
-    __SIMULATOR.importTrack(testTrack2);
+    __SIMULATOR.importTrack(circleTrack);
     setTimeout( () => __SIMULATOR.saveCurrentTrack(), 200)
 })
 
