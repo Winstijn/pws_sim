@@ -419,6 +419,10 @@ class Car {
 
         // Still needs to be thought of!
         this.steer = Math.PI / 2 // Radians!
+        this.lastSteer = Math.PI / 2
+
+        // Distance car has travalled in last frame.
+        this.distanceInLastFrame = 0 
     }
 
     // Drawing car 60 times a second.
@@ -467,6 +471,7 @@ class Car {
     updatePhysics(){
         this.x = this.velocityX + this.x
         this.y = this.velocityY + this.y
+        this.distanceInLastFrame = Math.sqrt( Math.pow(this.velocityX , 2) + Math.pow(this.velocityY, 2) )
 
         // Accelartion needs to be computed to compontents
         this.velocityX = this.accel * Math.cos( this.steer );
@@ -480,6 +485,20 @@ class Car {
             (this.accel - this.accelResistance < 0 || this.accel == 0) ? this.accel = 0 : this.accel -= this.accelResistance
         } else {
             (this.accel - this.accelResistance > 0 || this.accel == 0) ? this.accel = 0 : this.accel += this.accelResistance
+        }
+
+        this.checkSteerPhysics();
+    }
+
+    // TODO: Explain, why this is needed. We kunnen niet zomaar overal sturen!
+    checkSteerPhysics(){
+        if (this.sim.canvas.frameCount % 2 == 0){
+            if ( Math.abs(this.steer - this.lastSteer) > (Math.PI / 4) ) {
+                console.log("[AI Trainer] Removed car which does weird movement with steer!")
+                this.suicide();
+            }
+
+            this.lastSteer = this.steer
         }
 
     }
@@ -557,9 +576,8 @@ class Car {
         // TODO: Describe in PWS. 
         // Cars will turns backwards for more points! Sneaaaky
         if (this.sim.trainingMode && (this.currentSector < oldSector || (oldSector == 0 && this.currentSector == this.sim.trackPoints.length - 1))){
-            console.log("SNEAKY BITCH!")
-            this.isAlive = false
-            this.sim.casualties += 1
+            console.log("[AI Trainer] Removing one car that went backwards!")
+            this.suicide();
             this.currentSector = oldSector
             return
         }
@@ -570,6 +588,12 @@ class Car {
         }
             
         return this.currentSector
+    }
+
+    suicide(){
+        this.isAlive = false
+        this.sim.casualties += 1
+        addNN(this);
     }
 
     checkControls(){
@@ -618,22 +642,18 @@ class Car {
       var points = [topLeft, topRight, bottomLeft, bottomRight];
       // Check for in track
       var point;
+
       for(point of points){
         if (__SIMULATOR.outOfTrack(point.x, point.y)) {
-          this.isAlive = false;
+          this.suicide();
           if (!this.sim.trainingMode) setTimeout(this.sim.spawnControlableCar.bind(this.sim), 500)
-          __SIMULATOR.casualties += 1
-          addNN(this);
           break;
         }
       }
 
-      let minSpeed = Math.pow(this.velocityX, 2) + Math.pow(this.velocityY, 2)
-      if (this.isAlive && this.ai && this.ai.framesAlive > 20 && minSpeed < 0.5) {
-          this.isAlive = false;
-          __SIMULATOR.casualties += 1
-          addNN(this);
-          console.log("[Car] I drove too slow! I got killed.")
+      if (this.isAlive && this.ai && this.ai.framesAlive > 20 && this.distanceInLastFrame < 1) {
+          this.suicide();
+          console.log("[AI Trainer] Removing car that went too slow!")
       }
 
     }
@@ -646,8 +666,8 @@ $(document).ready( () => {
     __POPULATION = 100;
 
     // For debugging:
-    __SIMULATOR.importTrack(circleTrack);
-    setTimeout( () => __SIMULATOR.saveCurrentTrack(), 200)
+    // __SIMULATOR.importTrack(testTrack);
+    // setTimeout( () => __SIMULATOR.saveCurrentTrack(), 200)
 })
 
 

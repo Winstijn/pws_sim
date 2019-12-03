@@ -16,7 +16,7 @@ class DrivingAI extends NeuralNetwork {
       this.dDistance = 0;
       this.car = settings.car;
       this.framesAlive = 0
-      this.allFitness = 0
+      // this.allFitness = 0
     }
     //Overwriting the one in NN
     copy(){
@@ -35,17 +35,21 @@ class DrivingAI extends NeuralNetwork {
           this.inputs = [];
           let trackWith = __SIMULATOR.circleRadius * 2;
           for (var i=0; i< this.car.sensors.length; i++) {
-            this.inputs.push(this.car.sensors[i] / trackWith);
+            this.inputs.push(this.car.sensors[i]);
           }
           this.inputs.push(this.car.steer);
           this.inputs.push(this.car.accel);
 
           const output = this.predict(this.inputs);
 
+          // Adding accel to the car.
           this.car.accel = -this.car.standardAccel * output[0];
-          this.car.steer = output[1] * Math.PI;
-          // this.fitness++;
-          this.fitness = this.car.sensors.reduce((a, b) =>  a + b) / this.car.sensors.length
+
+          // TODO:
+          // Er mag alleen maar een kant op worden gestuurd en maar 45 graden per beslissen worden veranderd.
+          this.car.steer += (output[1] - 0.5) * Math.PI / 6
+
+          this.fitness = this.car.currentSector
           this.framesAlive++
           this.allFitness += this.fitness
 
@@ -66,10 +70,7 @@ class DrivingAI extends NeuralNetwork {
 function firstGen() {
   if (!firstGenCalculated) {
     firstGenCalculated = true;
-    __SIMULATOR.spawnPoint = {
-      x: __SIMULATOR.canvas.mouseX,
-      y: __SIMULATOR.canvas.mouseY
-    }
+
     for (let i = 0; i < __POPULATION; i++) {
        __SIMULATOR.cars[i] = new Car(__SIMULATOR, undefined, __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
     }
@@ -82,7 +83,7 @@ function nextGen(){
   let sortedArray = [];
   let evolvedArray = [];
   if (__NEURALNETWORKS.length > 1) {
-    sortedArray = selectionSort(__NEURALNETWORKS);
+    sortedArray = winstijnSort(__NEURALNETWORKS);
     evolvedArray = evolveGen(sortedArray);
   } else {
     evolvedArray = __NEURALNETWORKS;
@@ -177,6 +178,7 @@ function crossOver(a, b) {
   networkA.weights_ih = networkA.weights_ih.combine(networkB.weights_ih);
   return networkA;
 }
+
 //Source https://khan4019.github.io/front-end-Interview-Questions/sort.html
 function selectionSort(arr){
   var minIdx, temp,
@@ -186,8 +188,10 @@ function selectionSort(arr){
     for(var  j = i+1; j<len; j++){
       let distance1 = Math.round(arr[j].dDistance);
       let distance2 = Math.round(arr[minIdx].dDistance);
-      let arr1 = arr[j].allFitness + arr[j].dDistance
-      let arr2 = arr[minIdx].allFitness + arr[minIdx].dDistance
+
+      let arr1 = arr[j].car.currentSector 
+      let arr2 = arr[minIdx].car.currentSector 
+
        if(arr1>arr2){
           minIdx = j;
        }
@@ -198,14 +202,34 @@ function selectionSort(arr){
   }
   console.log("")
   console.log("BEST NN:")
-  console.log("Fitness:", arr[0].allFitness / arr[0].framesAlive, "distance:", arr[0].dDistance / arr[0].framesAlive)
+  console.log("Fitness:", arr[0].fitness)
+  // console.log("Fitness:", arr[0].allFitness / arr[0].framesAlive, "distance:", arr[0].dDistance / arr[0].framesAlive)
   console.log("")
   console.log("WORST NN:")
-  console.log("Fitness:", arr[arr.length - 1 ].allFitness / arr[arr.length - 1].framesAlive, "distance:", arr[arr.length - 1].dDistance  /  arr[arr.length - 1].framesAlive)
+  console.log("Fitness:", arr[arr.length - 1 ].fitness)
+
+  // console.log("Fitness:", arr[arr.length - 1 ].allFitness / arr[arr.length - 1].framesAlive, "distance:", arr[arr.length - 1].dDistance  /  arr[arr.length - 1].framesAlive)
   // debugger
   return arr;
 }
 
+// TODO: Explain in PWS.
+function winstijnSort(arr){
+  const sorted = arr.sort( (ai, bi) => {
+      if (ai.car.currentSector == bi.car.currentSector){
+        return ai.car.sectorTime < bi.car.sectorTime ? 1 : -1
+      }
+      return ai.car.currentSector > bi.car.currentSector ? 1 : -1  
+  }).reverse()
+
+  console.log("==== Generation Results =====")
+  console.log("BEST NN:")
+  console.log("Sector:", sorted[0].car.currentSector, "time:", sorted[0].car.sectorTime)
+  console.log("")
+  console.log("WORST NN:")
+  console.log("Sector:", sorted[sorted.length - 1].car.currentSector, "time:", sorted[arr.length - 1].car.sectorTime)
+  return sorted
+}
 
 function addNN(car) {
   __NEURALNETWORKS.unshift(car.ai);
