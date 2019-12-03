@@ -15,8 +15,6 @@ class Simulator {
         this.log("Starting a simulator instance...")
 
         // Canvas variables
-        var initObject = this.createP5InitObject("setup", "draw")
-        this.canvas = new p5( initObject )
         this.webGL = true
         this.showDebug = true
         this.resolution = {width: 700, height: 700}
@@ -29,17 +27,23 @@ class Simulator {
         this.circleRadius = 90
         this.backgroundColor = 120
         this.trackIndex = 0
-        this.editingTrack = true
+        this.editingTrack = true;
+        this.paused = false;
         this.frameRate = 60
-        this.casualties = 0
+        this.casualties = 0;
+        this.generation = 1;
 
+        var initObject = this.createP5InitObject("setup", "draw");
+        this.canvas = new p5( initObject );
 
         this.log("Finished initializing the simulator!")
     }
 
     // Setup of the p5.js instance.
-    setup(){
+    setup(pc){
         this.log("p5.js libary setting up!")
+        this.canvas = pc;
+
         this.canvas.createCanvas( this.resolution.width , this.resolution.height , this.webGL ? "webgl" : 'p2d');
         this.canvas.frameRate(this.frameRate);
 
@@ -72,13 +76,10 @@ class Simulator {
     }
 
     drawCars(){
-        // debugging only
         var mouseOnCanvas = this.canvas.mouseX > 0 & this.canvas.mouseX < this.resolution.width && this.canvas.mouseY > 0 && this.canvas.mouseY < this.resolution.height;
 
-        if (!this.editingTrack && this.canvas.mouseIsPressed && !this.cars[0] && mouseOnCanvas){
-             for (let i = 0; i < __POPULATION; i++) {
-                this.cars[0] = new Car(this, undefined, this.canvas.mouseX, this.canvas.mouseY);
-            }
+        if (!this.editingTrack && this.canvas.mouseIsPressed && mouseOnCanvas){
+          firstGen();
         }
         for (let i = 0; i < this.cars.length; i++) {
             this.cars[i].draw();
@@ -96,6 +97,8 @@ class Simulator {
         this.canvas.text('fps: ' + Math.round(this.canvas.frameRate()), 10, currentOffset += offset);
         // this.canvas.text('mouseX: ' + Math.round(this.canvas.mouseX) + ", mouseY: " + Math.round(this.canvas.mouseY), 10, currentOffset += offset);
         // this.canvas.text('Currently inside track: ' + !this.outOfTrack( this.canvas.mouseX, this.canvas.mouseY ) , 10, currentOffset += offset);
+        this.canvas.text('Generation: ' + this.generation, 10, currentOffset += offset);
+
         if (this.editingTrack) this.canvas.text('TRACK_EDITING MODE', 10, currentOffset += offset);
     }
 
@@ -326,9 +329,9 @@ class Simulator {
     // PERFECT USE OF JAVASCRIPT!
     createP5InitObject(...functions){
         return pc => {
-            functions.forEach( name => {
-                if (this[name]) pc[name] = () => this[name]()
-            })
+          functions.forEach( name => {
+              if (this[name]) pc[name] = () => this[name](pc)
+          })
         }
     }
 
@@ -339,11 +342,16 @@ class Simulator {
 class Car {
 
     // Input should be an object.
-    constructor(sim, ai, x, y, color = 20){
+    constructor(sim, ai, x, y, color){
         // console.log(x)
         this.sim = sim;
-        this.isAlive = true
-        this.ai = new DrivingAI({ car: this });
+        this.isAlive = true;
+        if (ai) {
+          this.ai = ai;
+          this.ai.car = this;
+        } else {
+          this.ai = new DrivingAI( { in_nodes:7, hidden_nodes:8, output_nodes:2, car: this } );
+        }
         this.x = Math.round(x);
         this.y = Math.round(y);
         this.velocityX = 0; // In Pixels per Frame.
@@ -354,9 +362,14 @@ class Car {
         this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
         this.standardAccel = 2
 
-        this.color = color
+        if (color) {
+          this.color = color;
+        } else{
+          this.color = 20
+        }
         this.width = 20
         this.height = 30
+
 
         // Still needs to be thought of!
         this.steer = Math.PI / 2 // Radians!
@@ -367,26 +380,34 @@ class Car {
     // Watch out and test before changing something here.
     draw(){
         // If it's dead, don't render it.
-        if(!this.isAlive) return 
-        
+        if(!this.isAlive) return
+
         // Check if car is in a wall, because we kill it, if it is!
         this.collisionDetection();
 
         this.sim.canvas.fill(this.color);
         // this.sim.canvas.translate( Math.cos(this.steer), Math.sin(this.steer) )
-        
-        // Drawing actual car at X and Y positions  
+
+        // Drawing actual car at X and Y positions
         this.drawCar();
 
-        // Calculate distances from the walls!
-        this.calculateDistances();
+        if (!__SIMULATOR.paused){
+          // Calculate distances from the walls!
+          this.calculateDistances();
 
-        // Controlling one vehicle with the keys!
-        this.checkControls();
-        this.ai.predictDrive();
+          // Controlling one vehicle with the keys!
+          //this.checkControls();
+          this.ai.predictDrive();
 
-        // Updating pixelPositions and values.
-        this.updatePhysics();
+          // Updating pixelPositions and values.
+          this.updatePhysics();
+        }
+        if (__SELECTEDNN != undefined && __SIMULATOR.paused && __SIMULATOR.cars[__SELECTEDNN] == this) {
+          console.log("color");
+          this.color = 100;
+        } else {
+          this.color = 20;
+        }
     }
 
     drawCar(){
@@ -430,7 +451,7 @@ class Car {
         const halfWidth = this.width / 2
         const halfHeight = this.height / 2
 
-        // Front, with a (0, 1) vector 
+        // Front, with a (0, 1) vector
         // Need to think of a way to richtingsvector.
         this.sim.canvas.stroke(126)
         // Wat een clusterfuck
@@ -442,8 +463,10 @@ class Car {
         var frontRight = this.calculateDistance( -Math.cos( this.steer + Math.PI / 4 ), -Math.sin( this.steer + Math.PI / 4))
         var left = this.calculateDistance( -Math.cos( this.steer - Math.PI / 2 ), -Math.sin( this.steer - Math.PI / 2))
         var right = this.calculateDistance( -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2))
+
+        this.sensors = [front, frontLeft, frontRight, left, right]
         // var right = this.calculateDistance( -halfWidth * Math.cos( this.steer +  Math.PI / 2),  -halfHeight * Math.sin( this.steer  + Math.PI / 2),  -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2)  )
-        // this.showDebugDistances(front ,frontLeft, frontRight, left, right );
+        //this.showDebugDistances(front ,frontLeft, frontRight, left, right );
     }
 
     showDebugDistances(front ,frontLeft, frontRight, left, right){
@@ -477,7 +500,7 @@ class Car {
             x += vecX; y += vecY;
         }
         distance = Math.sqrt( Math.pow( startX - x , 2) + Math.pow( startY - y, 2) );
-        this.sim.canvas.line(startX, startY, x, y);
+        //this.sim.canvas.line(startX, startY, x, y);
         return distance
 
     }
@@ -532,9 +555,19 @@ class Car {
         if (__SIMULATOR.outOfTrack(point.x, point.y)) {
           this.isAlive = false;
           __SIMULATOR.casualties += 1
+          addNN(this);
           break;
         }
       }
+
+      let minSpeed = (Math.abs(this.velocityX) + Math.abs(this.velocityY));
+      if (this.isAlive && this.ai && this.ai.fitness > 20 && minSpeed < 1) {
+          this.isAlive = false;
+          __SIMULATOR.casualties += 1
+          addNN(this);
+          console.log("Someone was too slow")
+      }
+
     }
 
 }
@@ -542,10 +575,10 @@ class Car {
 
 $(document).ready( () => {
     __SIMULATOR = new Simulator();
-    __POPULATION = 1;
+    __POPULATION = 50;
 
     // For debugging:
-    __SIMULATOR.importTrack(testTrack);
+    __SIMULATOR.importTrack(testTrack2);
     setTimeout( () => __SIMULATOR.saveCurrentTrack(), 200)
 })
 

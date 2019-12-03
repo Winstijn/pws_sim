@@ -114,6 +114,26 @@ class Matrix {
       .map((e, i, j) => func(matrix.data[i][j], i, j));
   }
 
+  chanceMap(m) {
+    // Apply a function to every element of matrix
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        let multiplyer;
+        if (m != undefined) {
+          multiplyer = __SIMULATOR.canvas.random(-m, m);
+        } else {
+          multiplyer = __SIMULATOR.canvas.random(-0.2, 0.2);
+        }
+        let func = x => x+multiplyer
+        let val = this.data[i][j];
+        if (Math.random()< __MUTATECHANCEPERELEMENT) {
+          this.data[i][j] = func(val, i, j);
+        }
+      }
+    }
+    return this;
+  }
+
   print() {
     console.table(this.data);
     return this;
@@ -130,6 +150,19 @@ class Matrix {
     let matrix = new Matrix(data.rows, data.cols);
     matrix.data = data.data;
     return matrix;
+  }
+
+  combine(b){
+    let aM = this.copy();
+    let bM = b.copy();
+    if (aM.data.length != bM.data.length) {
+      console.log("Array's need to be the same size");
+    } else {
+      for (var i = 0; i < aM.data.length; i++) {
+        aM.data[i][0] = (this.data[i][0] + bM.data[i][0])/2;
+      }
+    }
+    return aM;
   }
 }
 

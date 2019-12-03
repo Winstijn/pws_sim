@@ -21,23 +21,37 @@
         </div>
         <div id="middle" class="flex-hori" >
             <div id="left">
-
-
-
+              <div class="">
+                <div id="play-pause" class="btn" onclick="__SIMULATOR.paused ? __SIMULATOR.paused = false : __SIMULATOR.paused = true"> Play/Pause</div>
+              </div>
             </div>
-            
+
            <div id="center">
-        
+
             </div>
-        
+
             <div id="right">
                 <div id="track-settings">
                     <div id="edit-track" class="btn" onclick="__SIMULATOR.editingTrack = true"> Edit Track</div>
                     <div id="save-track" class="btn" onclick="__SIMULATOR.saveCurrentTrack()"> Save Track</div>
                 </div>
+                <div id="neuralnet-settings">
+                    <div id="">
+                      Neural Network Settings
+                    </div>
+                    <div id="track-settings">
+                      <div id="save-best-nn" class="btn" onclick="saveNeuralNet()"> Save NN</div>
+                      <div id="load-nn" class="btn" onclick="loadNeuralNet()"> Load NN</div>
+                    </div>
+                    <div id="track-settings">
+                      <div id="next" class="btn" onclick="nextNeuralnet()"> Select Next</div>
+                      <div id="previous" class="btn" onclick="previousNeuralNet()"> Select Previous</div>
+
+                    </div>
+                </div>
             </div>
         </div>
-        <div id="footer"> 
+        <div id="footer">
             Self Driving Artificial Intelligence by Fyor Klein Gunnewiek and Winstijn Smit.
         </div>
     </body>
