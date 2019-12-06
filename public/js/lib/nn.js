@@ -144,10 +144,16 @@ class NeuralNetwork {
   }
 
   serialize() {
-    copyAI = this.copy();
-    delete copyAI.sim;
-    delete copyAI.car;
-    let temp = JSON.stringify(this);
+    let stringObject = {
+      input_nodes: this.input_nodes,
+      hidden_nodes: this.hidden_nodes,
+      output_nodes: this.output_nodes,
+      weights_ho: this.weights_ho,
+      weights_ih: this.weights_ih,
+      bias_o: this.bias_o,
+      bias_h: this.bias_h
+    }
+    let temp = JSON.stringify(stringObject);
     return temp;
   }
 

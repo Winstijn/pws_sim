@@ -26,10 +26,6 @@ class DrivingAI extends NeuralNetwork {
     // called everyframe
     predictDrive(){
         // Put inputs here!
-        if (__SIMULATOR.casualties == __POPULATION) {
-          __SIMULATOR.casualties = 0;
-          nextGen();
-        } else {
           if (!this.car.sensors) {this.car.sensors = [0, 0, 0, 0, 0];}
 
           this.inputs = [];
@@ -45,7 +41,6 @@ class DrivingAI extends NeuralNetwork {
           // Adding accel to the car.
           this.car.accel = -this.car.standardAccel * output[0];
 
-          // TODO:
           // Er mag alleen maar een kant op worden gestuurd en maar 45 graden per beslissen worden veranderd.
           this.car.steer += (output[1] - 0.5) * Math.PI / 6
 
@@ -58,7 +53,7 @@ class DrivingAI extends NeuralNetwork {
           //console.log(`Fitness: ${this.fitness}`);
           //console.log(`Distance traveled: ${this.dDistance}`);
 
-        }
+
     }
     mutateBy(chance){
       if (Math.random() < chance) {
@@ -79,40 +74,31 @@ function firstGen() {
 }
 
 function nextGen(){
+  __SIMULATOR.cars = [];
   __SIMULATOR.generation++;
   let sortedArray = [];
   let evolvedArray = [];
   if (__NEURALNETWORKS.length > 1) {
-    sortedArray = winstijnSort(__NEURALNETWORKS);
+    if (__NEURALNETWORKS[0].car) {
+      sortedArray = winstijnSort(__NEURALNETWORKS)
+    } else {
+      sortedArray = __NEURALNETWORKS;
+    }
+    __BESTAI = sortedArray[0].copy();
     evolvedArray = evolveGen(sortedArray);
+    for (let i = 0; i < __POPULATION; i++) {
+      let coppiedNN = evolvedArray[i];
+      coppiedNN.mutateBy(__MUTATECHANCEPERAI);
+
+       __SIMULATOR.cars[i] = new Car(__SIMULATOR, evolvedArray[i], __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
+     }
   } else {
     evolvedArray = __NEURALNETWORKS;
+    !__SIMULATOR.spawnPoint ? __SIMULATOR.createSpawnPoint() : "";
+    __SIMULATOR.cars[0] = new Car(__SIMULATOR, evolvedArray[0], __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
+
   }
   __NEURALNETWORKS = [];
-
-
-__SIMULATOR.cars = []
-  for (let i = 0; i < __POPULATION; i++) {
-    let coppiedNN = evolvedArray[i];
-
-    //let randomNmbr = Math.random();
-    // if (randomNmbr < 1) {
-    //   let multiplyer = __SIMULATOR.canvas.random(-1, 1);
-    //   //coppiedNN.mutate(x => x*multiplyer);
-    // }
-    coppiedNN.mutateBy(__MUTATECHANCEPERAI);
-
-     __SIMULATOR.cars[i] = new Car(__SIMULATOR, evolvedArray[i], __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
-   }
-   // if (__MUTATEBYTWO) {
-   //   console.log(__BESTAI);
-   //   __SIMULATOR.cars[0] = new Car(__SIMULATOR, __BESTAI, __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y, 18);
-   //   // __SIMULATOR.cars[__POPULATION-1].color = 180;
-   //   console.log(__SIMULATOR.cars[0]);
-   // }
-   //__SIMULATOR.cars[0] = new Car(__SIMULATOR, sortedArray[0].copy(), __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y, 180);
-    //let newNN = crossOver(sortedArray[0], sortedArray[1]);
-   //__SIMULATOR.cars.unshift(new Car(__SIMULATOR, testNN.copy(), __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y, 200))
 }
 
 function evolveGen(arr){
@@ -138,7 +124,6 @@ function evolveGen(arr){
         evolvedGen.push(new DrivingAI( { in_nodes:7, hidden_nodes:8, output_nodes:2} ));
       }
     }
-    __BESTAI = firstBest.copy();
     return evolvedGen;
 
 
@@ -160,7 +145,6 @@ function evolveGen(arr){
     for (var i = 0; i < survivors.length-1; i++) {
       for (var j = i+1; j < survivors.length; j++) {
         evolvedGen.push(crossOver(arr[i], arr[j]));
-        // console.log(i + " | " + j);
 
       }
     }
@@ -179,55 +163,21 @@ function crossOver(a, b) {
   return networkA;
 }
 
-//Source https://khan4019.github.io/front-end-Interview-Questions/sort.html
-function selectionSort(arr){
-  var minIdx, temp,
-      len = arr.length;
-  for(var i = 0; i < len; i++){
-    minIdx = i;
-    for(var  j = i+1; j<len; j++){
-      let distance1 = Math.round(arr[j].dDistance);
-      let distance2 = Math.round(arr[minIdx].dDistance);
-
-      let arr1 = arr[j].car.currentSector 
-      let arr2 = arr[minIdx].car.currentSector 
-
-       if(arr1>arr2){
-          minIdx = j;
-       }
-    }
-    temp = arr[i];
-    arr[i] = arr[minIdx];
-    arr[minIdx] = temp;
-  }
-  console.log("")
-  console.log("BEST NN:")
-  console.log("Fitness:", arr[0].fitness)
-  // console.log("Fitness:", arr[0].allFitness / arr[0].framesAlive, "distance:", arr[0].dDistance / arr[0].framesAlive)
-  console.log("")
-  console.log("WORST NN:")
-  console.log("Fitness:", arr[arr.length - 1 ].fitness)
-
-  // console.log("Fitness:", arr[arr.length - 1 ].allFitness / arr[arr.length - 1].framesAlive, "distance:", arr[arr.length - 1].dDistance  /  arr[arr.length - 1].framesAlive)
-  // debugger
-  return arr;
-}
-
 // TODO: Explain in PWS.
 function winstijnSort(arr){
   const sorted = arr.sort( (ai, bi) => {
       if (ai.car.currentSector == bi.car.currentSector){
         return ai.car.sectorTime < bi.car.sectorTime ? 1 : -1
       }
-      return ai.car.currentSector > bi.car.currentSector ? 1 : -1  
+      return ai.car.currentSector > bi.car.currentSector ? 1 : -1
   }).reverse()
 
-  console.log("==== Generation Results =====")
-  console.log("BEST NN:")
-  console.log("Sector:", sorted[0].car.currentSector, "time:", sorted[0].car.sectorTime)
-  console.log("")
-  console.log("WORST NN:")
-  console.log("Sector:", sorted[sorted.length - 1].car.currentSector, "time:", sorted[arr.length - 1].car.sectorTime)
+  // console.log("==== Generation Results =====")
+  // console.log("BEST NN:")
+  // console.log("Sector:", sorted[0].car.currentSector, "time:", sorted[0].car.sectorTime)
+  // console.log("")
+  // console.log("WORST NN:")
+  // console.log("Sector:", sorted[sorted.length - 1].car.currentSector, "time:", sorted[arr.length - 1].car.sectorTime)
   return sorted
 }
 
@@ -236,26 +186,33 @@ function addNN(car) {
 }
 
 function saveNeuralNet() {
-  if (__SIMULATOR.paused) {
-    if (__SELECTEDNN == undefined) {
-      alert("No car selected")
-    } else {
-      console.log(__SIMULATOR.cars[__SELECTEDNN].ai.serialize());
-    }
+  if (__SELECTEDNN == undefined) {
+    console.log(__BESTAI.serialize());
   } else {
-    alert("The simulator must be paused")
+    console.log(__SIMULATOR.cars[__SELECTEDNN].ai.serialize());
   }
-
 }
 
 function loadNeuralNet() {
-    // TODO: implement loading in neuralnetworks
-    // var input = prompt("Input ai", "An ai object");
-    // if (input == null || input == "") {
-    //   //
-    // } else {
-    //   loadedNN = input.deserialize();
-    // }
+    //TODO: implement loading in neuralnetworks
+    var input = prompt("Input ai", "An ai object");
+    if (input == null || input == "") {
+      //
+    } else {
+      loadedNN = deserialize(input);
+
+    }
+    __NEURALNETWORKS = [];
+    if (__EVOLVEFURTHER) {
+      for (var i = 0; i < __POPULATION; i++) {
+        __NEURALNETWORKS[i] = loadedNN;
+      }
+    } else {
+      __NEURALNETWORKS[0] = loadedNN.copy();
+      __POPULATION = 1;
+    }
+    __SIMULATOR.casualties = 0;
+    nextGen();
 
 
 }
@@ -267,19 +224,7 @@ function nextNeuralnet() {
   } else {
       __SELECTEDNN++;
   }
-  }
-  //console.log(__SELECTEDNN);
-  // while (__SIMULATOR.cars[__SELECTEDNN].isAlive == false) {
-  //   console.log(__SELECTEDNN + " is dead");
-  //   __SELECTEDNN+= 1;
-  // }
-  // for (var i = __SELECTEDNN; i < __SIMULATOR.cars.length; i++) {
-  //   if (__SIMULATOR.cars[i].isAlive != false) {
-  //     __SELECTEDNN = i;
-  //     break;
-  //   }
-  // }
-  // console.log(__SELECTEDNN);
+}
 
 function previousNeuralNet() {
   if (__SELECTEDNN == 0) {
@@ -292,11 +237,13 @@ function previousNeuralNet() {
 }
 
 $(document).ready( () => {
+  __EVOLVEFURTHER = true;
   __EVOLVEDNN = [];
   __NEURALNETWORKS = [];
   __SELECTEDNN = undefined;
   firstGenCalculated = false;
   __MUTATECHANCEPERELEMENT = 0.5;
   __MUTATECHANCEPERAI = 1;
-  __MUTATEBYTWO = true;
+  __MUTATEBYTWO = false;
+
 });

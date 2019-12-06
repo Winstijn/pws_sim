@@ -16,9 +16,10 @@ class Simulator {
 
         // Canvas variables
         this.webGL = true
-        this.trainingMode = true
-        this.showDebug = true
-        this.resolution = {width: 700, height: 700}
+        this.trainingMode = true;
+        this.showDebug = true;
+        this.realLife = true;
+        this.resolution = {width: this.realLife ? 1400 : 700, height: 700}
 
         // Variables for creations of tracks and cars.
         this.tracks = []
@@ -83,8 +84,13 @@ class Simulator {
           this.setSpawnPoint();
           this.trainingMode ? firstGen() : this.spawnControlableCar()
         }
-        for (let i = 0; i < this.cars.length; i++) {
-            this.cars[i].draw();
+        if (__SIMULATOR.casualties >= __POPULATION) {
+          __SIMULATOR.casualties = 0;
+          nextGen();
+        } else {
+          for (let i = 0; i < this.cars.length; i++) {
+              this.cars[i].draw();
+          }
         }
 
     }
@@ -122,35 +128,35 @@ class Simulator {
         // For drawing the points on the track that make out the sectors.
         if (this.showDebug && this.trackPoints.length > 0) {
             this.canvas.push()
-  
+
             for (let i = 0; i < this.trackPoints.length; i++) {
                 const point = this.trackPoints[i]
-             
+
                 const setPointStroke = () => {
                     this.canvas.stroke('purple');
-                    this.canvas.strokeWeight(10);       
+                    this.canvas.strokeWeight(5 * this.canvas.pixelDensity());
                 }
                 setPointStroke();
-        
+
                 if (this.spawnPoint && i == this.spawnPoint.sectorID) {
                     // Ik weet het lelijke code, maar anders kon ik de kleur niet veranderen.
                     // Kleur voor de spawnpoint
                     this.canvas.stroke('magenta');
-                    this.canvas.strokeWeight(20);
+                    this.canvas.strokeWeight(7 * this.canvas.pixelDensity());
                     this.canvas.point(point[0], point[1]);
                     setPointStroke();
                 } else {
                     this.canvas.point(point[0], point[1]);
                 }
-            }    
+            }
 
             // Kleur voor de huidige sector punt.
             if (this.cars.length > 0 && !this.trainingMode) {
                 this.canvas.stroke('orange');
-                this.canvas.strokeWeight(20);
-             
+                this.canvas.strokeWeight(7 * this.canvas.pixelDensity());
+
                 const closestPoint = this.findClosestSector(this.cars[0].x, this.cars[0].y);
-                this.canvas.point(closestPoint[0], closestPoint[1]);    
+                this.canvas.point(closestPoint[0], closestPoint[1]);
             }
 
             this.canvas.pop();
@@ -192,7 +198,7 @@ class Simulator {
         this.canvas.loadPixels();
         // drawingContext.getImageData(0, 0, width * pixelDensity(), height * pixelDensity());
         // Happens in code, but why does it slow down when called?
-        
+
         // Also slows down?
         // var pixels = this.canvas.drawingContext.getImageData(0, 0, this.canvas.width * this.canvas.pixelDensity(), this.canvas.height * this.canvas.pixelDensity());
 
@@ -332,6 +338,18 @@ class Simulator {
         }
     }
 
+    createSpawnPoint(){
+        if (!this.spawnPoint) {
+            if (this.trackPoints.length == 0) { alert("Track Point are not calculated"); return}
+            const point = this.trackPoints[0];
+            this.spawnPoint = {
+                x: point[0],
+                y: point[1],
+                sectorID: 0
+              }
+        }
+    }
+
     findClosestSector(x, y){
         if (!this.trackPoints) return "No track points."
 
@@ -445,12 +463,17 @@ class Car {
           this.findCurrentSector();
 
           // Controlling one vehicle with the keys!
-          this.sim.trainingMode ? this.ai.predictDrive() : this.checkControls()
+
+          if (this.sim.trainingMode){
+              if (this.sim.canvas.frameCount % 15) this.ai.predictDrive()
+          } else {
+              this.checkControls()
+          }
 
           // Updating pixelPositions and values.
           this.updatePhysics();
         }
-        
+
     }
 
     drawCar(){
