@@ -63,6 +63,7 @@ class DrivingAI extends NeuralNetwork {
 }
 
 function firstGen() {
+  __OLDPOP = __POPULATION
   if (!firstGenCalculated) {
     firstGenCalculated = true;
 
@@ -75,25 +76,46 @@ function firstGen() {
 
 function nextGen(){
   __SIMULATOR.cars = [];
-  __SIMULATOR.generation++;
   let sortedArray = [];
   let evolvedArray = [];
-  if (__NEURALNETWORKS.length > 1) {
+  console.log(__NEURALNETWORKS.length);
+  if (__NEURALNETWORKS.length > 1 && __EVOLVEFURTHER) {
+    __SIMULATOR.generation++;
+    //   || !(__NEURALNETWORKS[0].car && !__NEURALNETWORKS[0].car.currentSector)
     if (__NEURALNETWORKS[0].car) {
-      sortedArray = winstijnSort(__NEURALNETWORKS)
+      if (__NEURALNETWORKS[0].car.currentSector) {
+        sortedArray = winstijnSort(__NEURALNETWORKS);
+        __BESTAI = sortedArray[0].copy();
+        evolvedArray = evolveGen(sortedArray);
+        for (let i = 0; i < __POPULATION; i++) {
+          let coppiedNN = evolvedArray[i].copy();
+          coppiedNN.mutateBy(__MUTATECHANCEPERAI);
+          evolvedArray[i] = coppiedNN;
+         }
+         sortedArray = evolvedArray;
+      } else {
+        sortedArray = __NEURALNETWORKS;
+      }
     } else {
+      console.log("first");
       sortedArray = __NEURALNETWORKS;
     }
-    __BESTAI = sortedArray[0].copy();
-    evolvedArray = evolveGen(sortedArray);
     for (let i = 0; i < __POPULATION; i++) {
-      let coppiedNN = evolvedArray[i];
-      coppiedNN.mutateBy(__MUTATECHANCEPERAI);
-
-       __SIMULATOR.cars[i] = new Car(__SIMULATOR, evolvedArray[i], __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
+      let copy = sortedArray[i].copy();
+       __SIMULATOR.cars[i] = new Car(__SIMULATOR, sortedArray[i], __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
      }
+  } else if (__NEURALNETWORKS.length == 1 && __EVOLVEFURTHER) {
+    __POPULATION = __OLDPOP;
+    for (var i = 0; i < __POPULATION; i++) {
+      let copyAI = __NEURALNETWORKS[0].copy();
+      copyAI.mutate();
+      __SIMULATOR.cars[i] = new Car(__SIMULATOR, copyAI, __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
+    }
   } else {
+    __POPULATION = 1;
+    __SIMULATOR.casualties = 0;
     evolvedArray = __NEURALNETWORKS;
+    evolvedArray[0].framesAlive = 0;
     !__SIMULATOR.spawnPoint ? __SIMULATOR.createSpawnPoint() : "";
     __SIMULATOR.cars[0] = new Car(__SIMULATOR, evolvedArray[0], __SIMULATOR.spawnPoint.x, __SIMULATOR.spawnPoint.y);
 
@@ -205,13 +227,11 @@ function loadNeuralNet() {
     __NEURALNETWORKS = [];
     if (__EVOLVEFURTHER) {
       for (var i = 0; i < __POPULATION; i++) {
-        __NEURALNETWORKS[i] = loadedNN;
+        __NEURALNETWORKS[i] = loadedNN.copy();
       }
     } else {
       __NEURALNETWORKS[0] = loadedNN.copy();
-      __POPULATION = 1;
     }
-    __SIMULATOR.casualties = 0;
     nextGen();
 
 
