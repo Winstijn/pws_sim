@@ -20,7 +20,7 @@ class Simulator {
         this.showDebug = true
         this.resolution = {width: 700, height: 700}
 
-        // Variables for creations of tracks and cars.
+        // Variables for creations of xtracks and cars.
         this.tracks = []
         this.trackPoints = []
         this.cars = []
@@ -45,6 +45,9 @@ class Simulator {
         this.log("p5.js libary setting up!")
         this.canvas = pc;
 
+        // Creating separate canvas to draw the track on. For performance reasons!
+        // TODO: PWS!
+        this.trackCanvas = this.canvas.createGraphics( this.resolution.width * pc.pixelDensity() , this.resolution.height * pc.pixelDensity(), this.webGL ? "webgl" : 'p2d' )
         this.canvas.createCanvas( this.resolution.width , this.resolution.height , this.webGL ? "webgl" : 'p2d');
         this.canvas.frameRate(this.frameRate);
 
@@ -67,11 +70,13 @@ class Simulator {
     draw(){
         if (this.webGL) this.canvas.translate(-0.5 * this.canvas.width, -0.5 * this.canvas.height)
         // this.editingTrack ? this.canvas.noCursor() : this.canvas.cursor();
+
         this.canvas.background(this.backgroundColor);
+        this.drawTrack();
+
         if (this.showDebug) this.drawDebugText();
 
         // Interface and listeners and such when editing track.
-        this.drawTrack();
         this.drawCars();
         if (this.editingTrack) this.drawTrackEditing();
     }
@@ -108,16 +113,27 @@ class Simulator {
     // #region Track Code
     // would love to have this code in a class but it might be better to have it here :)
 
+    // Draw the current track to the buffer.
+    // Helps a lot with performance because circles do not have to be drawn every time!
+    // P.S. Could be used in the Pixelhobby Designer!
+    drawTrackBuffer(){
+        if (this.trackCanvas) {
+            this.trackCanvas.background(this.backgroundColor);
+            if (!this.tracks[this.trackIndex]) return
+            for (let i = 0; i < this.tracks[this.trackIndex].length; i++) {
+                const c = this.tracks[this.trackIndex][i]
+                this.trackCanvas.noStroke()
+                this.trackCanvas.fill(this.trackColor)
+                this.trackCanvas.circle(c[0], c[1], this.circleRadius, this.circleRadius)
+            }
+        }
+    }
+
     drawTrack(){
         // Draw all circles that create the track.
         if (!this.tracks[this.trackIndex]) return
-
-        for (let i = 0; i < this.tracks[this.trackIndex].length; i++) {
-            const c = this.tracks[this.trackIndex][i]
-            this.canvas.noStroke()
-            this.canvas.fill(this.trackColor)
-            this.canvas.circle(c[0], c[1], this.circleRadius, this.circleRadius)
-        }
+        if (this.editingTrack) this.drawTrackBuffer()
+        this.canvas.image(this.trackCanvas, -0.5 * this.canvas.pixelDensity() * this.canvas.width,  -0.5 * this.canvas.pixelDensity() * this.canvas.height);
 
         // For drawing the points on the track that make out the sectors.
         if (this.showDebug && this.trackPoints.length > 0) {
@@ -190,6 +206,7 @@ class Simulator {
         this.drawTrack();
 
         this.canvas.loadPixels();
+
         // drawingContext.getImageData(0, 0, width * pixelDensity(), height * pixelDensity());
         // Happens in code, but why does it slow down when called?
         
@@ -204,9 +221,7 @@ class Simulator {
 
         // Separates the track in multiple points
         this.calculateTrackPoints();
-
         this.editingTrack = false
-        // alert("Saved track!");
     }
 
 
@@ -409,7 +424,7 @@ class Car {
 
         // Needs to be recalculated for in the real world!
         this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
-        this.standardAccel = 2
+        this.standardAccel = 10
 
         this.color = color || 20;
         
@@ -445,7 +460,11 @@ class Car {
           this.findCurrentSector();
 
           // Controlling one vehicle with the keys!
-          this.sim.trainingMode ? this.ai.predictDrive() : this.checkControls()
+          if (this.sim.trainingMode) { 
+            if (this.sim.canvas.frameCount % 20) this.ai.predictDrive()
+          } else {
+            this.checkControls()
+          }
 
           // Updating pixelPositions and values.
           this.updatePhysics();
@@ -667,7 +686,7 @@ $(document).ready( () => {
 
     // For debugging:
     // __SIMULATOR.importTrack(testTrack);
-    // setTimeout( () => __SIMULATOR.saveCurrentTrack(), 200)
+    // setTimeout( () => __SIMULATOR.saveCurrentTrack(), 1500)
 })
 
 
