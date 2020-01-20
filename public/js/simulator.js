@@ -16,7 +16,7 @@ class Simulator {
 
         // Canvas variables
         this.webGL = true
-        this.trainingMode = false;
+        this.trainingMode = true;
         this.showDebug = true;
         this.realLife = true;
         this.realCar = true
@@ -115,8 +115,17 @@ class Simulator {
         this.canvas.text('fps: ' + Math.round(this.canvas.frameRate()), 10, currentOffset += offset);
         // this.canvas.text('mouseX: ' + Math.round(this.canvas.mouseX) + ", mouseY: " + Math.round(this.canvas.mouseY), 10, currentOffset += offset);
         // this.canvas.text('Currently inside track: ' + !this.outOfTrack( this.canvas.mouseX, this.canvas.mouseY ) , 10, currentOffset += offset);
+        
+        // Text in Freemode
         if (!this.trainingMode && this.cars.length > 0) this.canvas.text('Sector: ' + this.cars[0].currentSector, 10, currentOffset += offset);
+        if (!this.trainingMode && this.cars.length > 0) this.canvas.text('Speed: ' +  Math.round(this.cars[0].distanceInLastFrame) + "m/s", 10, currentOffset += offset);
+        if (!this.trainingMode && this.cars.length > 0) this.canvas.text('Actual Steer: ' +  this.cars[0].steer.toFixed(3) + " rad.", 10, currentOffset += offset);
+        if (!this.trainingMode && this.cars.length > 0) this.canvas.text('Desired Steer: ' +  this.cars[0].desiredSteer.toFixed(3) + " rad.", 10, currentOffset += offset);
+        if (!this.trainingMode && this.cars.length > 0) this.canvas.text('Rotation Angle: ' +  Math.round(this.cars[0].rotationAngle) + " rad.", 10, currentOffset += offset);
+        if (!this.trainingMode && this.cars.length > 0) this.canvas.text('Rotation Speed: ' +  Math.round(this.cars[0].rotationVelocity) + " rad/s", 10, currentOffset += offset);
+
         if (!this.trainingMode && this.cars.length > 0) this.canvas.text('FREEMODE', 10, currentOffset += offset);
+
         if (this.trainingMode) this.canvas.text('Generation: ' + this.generation, 10, currentOffset += offset);
         if (this.editingTrack) this.canvas.text('TRACK_EDITING MODE', 10, currentOffset += offset);
     }
@@ -431,36 +440,50 @@ class Car {
         // console.log(x)
         this.sim = sim;
         this.isAlive = true;
-        if (ai) {
-          this.ai = ai;
-          this.ai.car = this;
-        } else {
-          this.ai = new DrivingAI( { in_nodes: 5, hidden_nodes:8, output_nodes:2, car: this } );
-        }
+        this.color = [this.sim.canvas.random(255), this.sim.canvas.random(255), this.sim.canvas.random(255)];
+        if (ai) { this.ai = ai; this.ai.car = this; } else { this.ai = new DrivingAI( { in_nodes: 5, hidden_nodes:8, output_nodes:2, car: this } );}
+        
+        // Properties of the car.
+        // Need to be realistic and tested.
+        // 1 PIXEL = 1 CM in the current scale!
+        this.width = 20
+        this.height = 40 // 40
+        this.wheelBaseLength = 40 - 10
+        this.invicible = !this.sim.trainingMode && true;
+        this.maxSteer = Math.PI / 3 // Maximale hoek de een wiel kan maken
+        this.steerSpeed = this.maxSteer / 0.5 // Snelheid dat de stuuras kan veranderen per seconde.
+       
+        // TODO:
+        // Add max steering angle
+        // Add steering speed.
+        // Add reaction time, etc.
+
+        // MOVEMENT: 
         this.x = Math.round(x);
         this.y = Math.round(y);
         this.velocityX = 0; // In Pixels per Frame.
         this.velocityY = 0; // in Pixels per Frame.
         this.accel = 0 // In Pixels per Frame per Frame
+
+        // TODO: REWORK THIS!
+        // Acceleration and Resistance for the movement of the car.
+        this.accelResistance = 1 // Decay of 1 pixel per frame per frame per frame
+        this.standardAccel = 10
+       
+        // SECTOR:
         this.currentSector = 0
         this.sectorTime = 0 
 
-        // Needs to be recalculated for in the real world!
-        this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
-        this.standardAccel = 20
+        //STEERING MECHANICS:
+        this.desiredSteer = 0 // We have control of this!
+        this.steer = 0 // Actual wheel position of the car. (Stuur- as)
+        this.rotationAngle = Math.PI / 2
+        this.rotationVelocity = 0
 
-        this.color = [this.sim.canvas.random(255), this.sim.canvas.random(255), this.sim.canvas.random(255)];
-        
-        this.width = 20
-        this.height = 40 // 40
-
-
-        // Still needs to be thought of!
-        this.steer = Math.PI / 2 // Radians!
-        this.lastSteer = Math.PI / 2
-
-        // Distance car has travalled in last frame.
+        // Distance car has travalled in last frame. aka speed.
         this.distanceInLastFrame = 0 
+        this.steerChanges = [0]
+        this.averageSteerChange = 0
     }
 
     // Drawing car 60 times a second.
@@ -494,6 +517,8 @@ class Car {
           this.updatePhysics();
         }
 
+        this.updateAverageSteerChanges()
+
     }
 
     drawCar(){
@@ -505,7 +530,7 @@ class Car {
         this.sim.canvas.rectMode(this.sim.canvas.CENTER)
         // this.sim.canvas.imageMode(this.sim.canvas.CENTER)
         this.sim.canvas.translate(this.x, this.y);
-        this.sim.canvas.rotate(this.steer)
+        this.sim.canvas.rotate(this.rotationAngle)
 
         if (this.sim.realCar) {
             this.sim.canvas.tint(...this.color);
@@ -523,9 +548,17 @@ class Car {
         this.y = this.velocityY + this.y
         this.distanceInLastFrame = Math.sqrt( Math.pow(this.velocityX , 2) + Math.pow(this.velocityY, 2) )
 
-        // Accelartion needs to be computed to compontents
-        this.velocityX = this.accel * Math.cos( this.steer );
-        this.velocityY = this.accel * Math.sin( this.steer );
+        // Steering Physics:
+        // https://asawicki.info/Mirror/Car%20Physics%20for%20Games/Car%20Physics%20for%20Games.html
+        this.updateSteer();
+        const steerRadius = this.wheelBaseLength / Math.sin(this.steer)
+        this.rotationVelocity = this.distanceInLastFrame / steerRadius 
+        this.rotationAngle += this.rotationVelocity
+
+        // Accelartion needs to be computed to compontents.
+        // Needs to be reworked.
+        this.velocityX = this.accel * Math.cos( this.rotationAngle );
+        this.velocityY = this.accel * Math.sin( this.rotationAngle );
 
         // Decay accelaration.
 
@@ -540,8 +573,54 @@ class Car {
         this.checkSteerPhysics();
     }
 
+    // Update the steer value to the desired one. 
+    // Do this with the speed the steering wheel is able to steer.
+    updateSteer(){
+        if (this.desiredSteer == this.steer) return
+
+        // Check if the steerspeed needs to be negative.
+        // + Use deltaTime to not depend on frames.     
+        const negativeSpeed = this.desiredSteer < this.steer
+        const steerSpeed = negativeSpeed ? -this.steerSpeed : this.steerSpeed
+        const newSteer = this.steer + steerSpeed * this.sim.canvas.deltaTime
+
+        // Set the steer to the desired steer if the new steer has reached.
+        if (negativeSpeed && newSteer <= this.desiredSteer ) { this.steer = this.desiredSteer; if (!this.sim.trainingMode) this.desiredSteer = 0; return }
+        if (!negativeSpeed && newSteer >= this.desiredSteer ){ this.steer = this.desiredSteer; if (!this.sim.trainingMode) this.desiredSteer = 0; return }
+
+        // Set the steer to the steer that has changed.
+        // Only gets called when the steer desired is not reached.
+        this.steer = newSteer
+    }
+
+    setSteer(deltaSteer){
+        // When in Training mode the AI gives 0 - 1 for steering.
+        if (this.sim.trainingMode) deltaSteer = (deltaSteer - 0.5) * 2 * this.maxSteer
+    
+        const negative = deltaSteer < 0
+        // New Desired steer
+        const newDesiredSteer = this.desiredSteer + deltaSteer
+
+        // Check for bounndries of the steer.
+        if (negative && newDesiredSteer < -this.maxSteer ) { this.desiredSteer = -this.maxSteer; this.addToSteerTotal(); return }
+        if (!negative && newDesiredSteer > this.maxSteer ) { this.desiredSteer = this.maxSteer; this.addToSteerTotal(); return }
+
+        // Set the new desiredSteer.
+        this.desiredSteer = newDesiredSteer
+        this.addToSteerTotal();
+    }   
+
+    addToSteerTotal(){
+        this.steerChanges.push(Math.abs(this.steer - this.desiredSteer))
+    }
+
+    updateAverageSteerChanges(){
+        this.averageSteerChange = this.steerChanges.reduce((acc, val) => acc + val) / this.steerChanges.length
+    }
+
     // TODO: Explain, why this is needed. We kunnen niet zomaar overal sturen!
     checkSteerPhysics(){
+        return
         if (this.sim.canvas.frameCount % 2 == 0){
             if ( Math.abs(this.steer - this.lastSteer) > (Math.PI / 4) ) {
                 console.log("[AI Trainer] Removed car which does weird movement with steer!")
@@ -566,11 +645,11 @@ class Car {
         // var front = this.calculateDistance( -halfWidth * Math.cos( this.steer ), -halfHeight * Math.sin( this.steer ),  -Math.cos( this.steer ), -Math.sin( this.steer ) )
         // var left = this.calculateDistance( - halfWidth * Math.cos( this.steer - Math.PI / 2),  -halfHeight * Math.sin( this.steer - Math.PI / 2),  -Math.cos( this.steer - Math.PI / 2 ), -Math.sin( this.steer - Math.PI / 2)  )
 
-        var front = this.calculateDistance( -Math.cos( this.steer ), -Math.sin( this.steer ) )
-        var frontLeft = this.calculateDistance( -Math.cos( this.steer - Math.PI / 4 ), -Math.sin( this.steer - Math.PI / 4))
-        var frontRight = this.calculateDistance( -Math.cos( this.steer + Math.PI / 4 ), -Math.sin( this.steer + Math.PI / 4))
-        var left = this.calculateDistance( -Math.cos( this.steer - Math.PI / 2 ), -Math.sin( this.steer - Math.PI / 2))
-        var right = this.calculateDistance( -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2))
+        var front = this.calculateDistance( -Math.cos( this.rotationAngle ), -Math.sin( this.rotationAngle ) )
+        var frontLeft = this.calculateDistance( -Math.cos( this.rotationAngle - Math.PI / 4 ), -Math.sin( this.rotationAngle - Math.PI / 4))
+        var frontRight = this.calculateDistance( -Math.cos( this.rotationAngle + Math.PI / 4 ), -Math.sin( this.rotationAngle + Math.PI / 4))
+        var left = this.calculateDistance( -Math.cos( this.rotationAngle - Math.PI / 2 ), -Math.sin( this.rotationAngle - Math.PI / 2))
+        var right = this.calculateDistance( -Math.cos( this.rotationAngle + Math.PI / 2 ), -Math.sin( this.rotationAngle + Math.PI / 2))
 
         this.sensors = [front, frontLeft, frontRight, left, right]
         // var right = this.calculateDistance( -halfWidth * Math.cos( this.steer +  Math.PI / 2),  -halfHeight * Math.sin( this.steer  + Math.PI / 2),  -Math.cos( this.steer + Math.PI / 2 ), -Math.sin( this.steer + Math.PI / 2)  )
@@ -641,6 +720,7 @@ class Car {
     }
 
     suicide(){
+        if (this.invicible) return
         this.isAlive = false
         this.sim.casualties += 1
         addNN(this);
@@ -656,12 +736,11 @@ class Car {
             if (this.sim.canvas.keyIsDown(87)) this.accel = -this.standardAccel
 
             // Press: A (steering left)
-            if (this.sim.canvas.keyIsDown(65)) this.steer -= Math.PI / 64
+            if (this.sim.canvas.keyIsDown(65)) this.setSteer(-Math.PI / 6)
 
             // Press: D (steering right)
-            if (this.sim.canvas.keyIsDown(68)) this.steer += Math.PI / 64
+            if (this.sim.canvas.keyIsDown(68)) this.setSteer(+Math.PI / 6)
     }
-
 
     //Collision detection system for the car itself.
     collisionDetection(){
@@ -696,7 +775,7 @@ class Car {
       for(point of points){
         if (__SIMULATOR.outOfTrack(point.x, point.y)) {
           this.suicide();
-          if (!this.sim.trainingMode) setTimeout(this.sim.spawnControlableCar.bind(this.sim), 500)
+          if (!this.sim.trainingMode && !this.invicible) setTimeout(this.sim.spawnControlableCar.bind(this.sim), 500)
           break;
         }
       }
@@ -713,10 +792,10 @@ class Car {
 
 $(document).ready( () => {
     __SIMULATOR = new Simulator();
-    __POPULATION = 100;
+    __POPULATION = 150;
 
     // For debugging:
-    // __SIMULATOR.importTrack(testTrack);
+    // __SIMULATOR.importTrack(circleTrack);
     // setTimeout( () => __SIMULATOR.saveCurrentTrack(), 1500)
 })
 
