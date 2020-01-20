@@ -16,9 +16,10 @@ class Simulator {
 
         // Canvas variables
         this.webGL = true
-        this.trainingMode = true;
+        this.trainingMode = false;
         this.showDebug = true;
         this.realLife = true;
+        this.realCar = true
         this.resolution = {width: this.realLife ? 1400 : 700, height: 700}
 
         // Variables for creations of xtracks and cars.
@@ -51,11 +52,15 @@ class Simulator {
         this.trackCanvas = this.canvas.createGraphics( this.resolution.width * pc.pixelDensity() , this.resolution.height * pc.pixelDensity(), this.webGL ? "webgl" : 'p2d' )
         this.canvas.createCanvas( this.resolution.width , this.resolution.height , this.webGL ? "webgl" : 'p2d');
         this.canvas.frameRate(this.frameRate);
+        this.canvas.pixelDensity(2);
+        this.trackCanvas.pixelDensity(2);
+
 
         if (this.webGL) {
             this.fontRegular = this.canvas.loadFont('fonts/Regular.otf');
             this.canvas.textFont(this.fontRegular)
         }
+        this.carImage = this.canvas.loadImage('images/tesla.png');
 
         $("#center").append(this.canvas.canvas)
     }
@@ -430,7 +435,7 @@ class Car {
           this.ai = ai;
           this.ai.car = this;
         } else {
-          this.ai = new DrivingAI( { in_nodes:7, hidden_nodes:8, output_nodes:2, car: this } );
+          this.ai = new DrivingAI( { in_nodes: 5, hidden_nodes:8, output_nodes:2, car: this } );
         }
         this.x = Math.round(x);
         this.y = Math.round(y);
@@ -442,12 +447,12 @@ class Car {
 
         // Needs to be recalculated for in the real world!
         this.accelResistance = 0.25 // Decay of 1 pixel per frame per frame per frame
-        this.standardAccel = 10
+        this.standardAccel = 20
 
-        this.color = color || 20;
+        this.color = [this.sim.canvas.random(255), this.sim.canvas.random(255), this.sim.canvas.random(255)];
         
         this.width = 20
-        this.height = 30
+        this.height = 40 // 40
 
 
         // Still needs to be thought of!
@@ -467,7 +472,7 @@ class Car {
 
         // Check if car is in a wall, because we kill it, if it is!
         this.collisionDetection();
-        this.sim.canvas.fill(this.color);
+        this.sim.canvas.fill(0);
 
         // Drawing actual car at X and Y positions
         this.drawCar();
@@ -498,9 +503,16 @@ class Car {
         this.sim.canvas.push()
 
         this.sim.canvas.rectMode(this.sim.canvas.CENTER)
+        // this.sim.canvas.imageMode(this.sim.canvas.CENTER)
         this.sim.canvas.translate(this.x, this.y);
         this.sim.canvas.rotate(this.steer)
-        this.sim.canvas.rect(0 , 0, this.height, this.width);
+
+        if (this.sim.realCar) {
+            this.sim.canvas.tint(...this.color);
+            this.sim.canvas.image(this.sim.carImage, -this.height / 2, -this.width / 2,this.height, this.width)
+        } else {
+            this.sim.canvas.rect(0 , 0, this.height, this.width);
+        }
 
         this.sim.canvas.pop();
     }
@@ -596,7 +608,7 @@ class Car {
             x += vecX; y += vecY;
         }
         distance = Math.sqrt( Math.pow( startX - x , 2) + Math.pow( startY - y, 2) );
-        if (!this.sim.trainingMode)this.sim.canvas.line(startX, startY, x, y);
+        if (!this.sim.trainingMode && this.sim.showDebug)this.sim.canvas.line(startX, startY, x, y);
         return distance
 
     }
