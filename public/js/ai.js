@@ -29,20 +29,22 @@ class DrivingAI extends NeuralNetwork {
           if (!this.car.sensors) {this.car.sensors = [0, 0, 0, 0, 0];}
 
           this.inputs = [];
-          let trackWith = __SIMULATOR.circleRadius * 2;
           for (var i=0; i< this.car.sensors.length; i++) {
-            this.inputs.push(this.car.sensors[i]);
+            var distance = this.car.sensors[i] 
+            this.inputs.push( distance > 1200 ? 1200 : distance);
           }
-          this.inputs.push(this.car.steer);
-          this.inputs.push(this.car.accel);
+          // this.inputs.push(this.car.steer);
+          // this.inputs.push(this.car.accel);
+          // if (this.car == __SIMULATOR.cars[0]) console.log(this.inputs) 
 
           const output = this.predict(this.inputs);
 
           // Adding accel to the car.
-          this.car.accel = -this.car.standardAccel * output[0];
-
+          // this.car.accel = -this.car.standardAccel * output[0];
+          this.car.accelerator = output[0]
           // Er mag alleen maar een kant op worden gestuurd en maar 45 graden per beslissen worden veranderd.
-          this.car.steer += (output[1] - 0.5) * Math.PI / 6
+          // this.car.steer += (output[1] - 0.5) * Math.PI / 6
+          this.car.setSteer(output[1])
 
           this.fitness = this.car.currentSector
           this.framesAlive++
