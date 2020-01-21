@@ -7,7 +7,6 @@
 //
 
 class DrivingAI extends NeuralNetwork {
-
     // constructor(in_nodes, hidden_nodes, output_nodes, car) {
     constructor(settings){
       settings instanceof DrivingAI ? super(settings) : super(settings.in_nodes, settings.hidden_nodes, settings.output_nodes)
@@ -145,7 +144,7 @@ function evolveGen(arr){
       }
       let difference = __POPULATION - evolvedGen.length;
       for (var i = 0; i < difference; i++) {
-        evolvedGen.push(new DrivingAI( { in_nodes:7, hidden_nodes:8, output_nodes:2} ));
+        evolvedGen.push(new DrivingAI( { in_nodes: 5, hidden_nodes:8, output_nodes:2} ));
       }
     }
     return evolvedGen;
@@ -191,17 +190,20 @@ function crossOver(a, b) {
 function winstijnSort(arr){
   const sorted = arr.sort( (ai, bi) => {
       if (ai.car.currentSector == bi.car.currentSector){
+         if (ai.car.sectorTime == bi.car.sectorTime) {
+           return ai.car.averageSteerChange < bi.car.averageSteerChange ? 1 : -1
+         }
         return ai.car.sectorTime < bi.car.sectorTime ? 1 : -1
       }
       return ai.car.currentSector > bi.car.currentSector ? 1 : -1
   }).reverse()
 
-  // console.log("==== Generation Results =====")
-  // console.log("BEST NN:")
-  // console.log("Sector:", sorted[0].car.currentSector, "time:", sorted[0].car.sectorTime)
-  // console.log("")
-  // console.log("WORST NN:")
-  // console.log("Sector:", sorted[sorted.length - 1].car.currentSector, "time:", sorted[arr.length - 1].car.sectorTime)
+  console.log("==== Generation Results =====")
+  console.log("BEST NN:")
+  console.log("Sector:", sorted[0].car.currentSector, "time:", sorted[0].car.sectorTime, 'steer:', sorted[0].car.averageSteerChange)
+  console.log("")
+  console.log("WORST NN:")
+  console.log("Sector:", sorted[sorted.length - 1].car.currentSector, "time:", sorted[arr.length - 1].car.sectorTime, 'steer:', sorted[arr.length - 1].car.averageSteerChange)
   return sorted
 }
 

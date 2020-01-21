@@ -458,7 +458,7 @@ class Car {
         this.wheelBaseLength = 40 - 10
         this.maxSteer = Math.PI / 3 // rad. - Maximale hoek de een wiel kan maken
         this.maxSpeed = 10 // m/s - Maximum speed the car can reach. 
-        this.steerSpeed = this.maxSteer / 0.5 // Snelheid dat de stuuras kan veranderen per seconde. (Duurt 0.5 seconde voordat hij kan reageren)
+        this.steerSpeed = this.maxSteer / 2 // Snelheid dat de stuuras kan veranderen per seconde. (Duurt 0.5 seconde voordat hij kan reageren)
         this.timeToMaxSpeed = 4 // time to reach top speed from 0m/s = 4 seconds.
         this.timeToFullStop = 2 // time to stand still from top speed. = 2 seconds.
 
@@ -562,7 +562,7 @@ class Car {
         // https://asawicki.info/Mirror/Car%20Physics%20for%20Games/Car%20Physics%20for%20Games.html
         this.updateSteer();
         const steerRadius = this.wheelBaseLength / Math.sin(this.steer)
-        this.rotationVelocity = this.velocity / steerRadius 
+        this.rotationVelocity = this.velocity / steerRadius
         this.rotationAngle -= this.rotationVelocity
 
         // VELOCITY: velocity needs to be computed to compontents.
@@ -601,10 +601,10 @@ class Car {
         this.steer = newSteer
     }
 
-    setSteer(newDesiredSteer){
+    setSteer(newDesiredSteer, relative=this.sim.trainingMode){
         // When in Training mode the AI gives 0 - 1 for steering.
         // 0 gives -0.5 or -1 * -0.5 * 2 * this.maxSteer, so it drives to the left.
-        if (this.sim.trainingMode) newDesiredSteer = -(newDesiredSteer - 0.5) * 2 * this.maxSteer
+        if (relative) newDesiredSteer = -(newDesiredSteer - 0.5) * 2 * this.maxSteer
     
         // Check for bounndries of the steer.
         const negative = newDesiredSteer < 0
@@ -752,7 +752,7 @@ class Car {
     suicide(force=false){
         if (this.noCollision && !force) return
         if (!this.sim.trainingMode && (!this.noCollision || force)) setTimeout(this.sim.spawnControlableCar.bind(this.sim), 500)
-
+        if (!this.sim.trainingMode && __CONTROLLER) __CONTROLLER.rumble(200);
         this.isAlive = false
         this.sim.casualties += 1
         addNN(this);
@@ -760,6 +760,8 @@ class Car {
 
     checkControls(){
             // We are not using a switch because we want to support multiple button presses!
+
+            // KEYBOARD CONTROLS:
 
             // Press: S (going backwards)
             if (this.sim.canvas.keyIsDown(83) ) this.accelerator = 0
@@ -772,6 +774,10 @@ class Car {
 
             // Press: D (steering right)
             if (this.sim.canvas.keyIsDown(68)) this.setSteer(-Math.PI / 6)
+
+
+            // CONTROLLER (XBOX)
+            if (__CONTROLLER) __CONTROLLER.checkControls(this);
     }
 
     checkBoundries(){
@@ -832,8 +838,8 @@ $(document).ready( () => {
     __POPULATION = 100;
 
     // For debugging:
-    __SIMULATOR.importTrack(testTrack);
-    setTimeout( () => __SIMULATOR.saveCurrentTrack(), 1500)
+    // __SIMULATOR.importTrack(testTrack);
+    // setTimeout( () => __SIMULATOR.saveCurrentTrack(), 1500)
 })
 
 
