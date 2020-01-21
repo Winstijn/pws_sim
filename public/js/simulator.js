@@ -25,6 +25,7 @@ class Simulator {
         // Variables for creations of xtracks and cars.
         this.tracks = []
         this.trackPoints = []
+        this.trackAverageRotation = 0
         this.cars = []
         this.trackColor = 255
         this.circleRadius = 90
@@ -49,7 +50,7 @@ class Simulator {
 
         // Creating separate canvas to draw the track on. For performance reasons!
         // TODO: PWS!
-        this.trackCanvas = this.canvas.createGraphics( this.resolution.width * pc.pixelDensity() , this.resolution.height * pc.pixelDensity(), this.webGL ? "webgl" : 'p2d' )
+        this.trackCanvas = this.canvas.createGraphics( this.resolution.width * 2 , this.resolution.height * 2, this.webGL ? "webgl" : 'p2d' )
         this.canvas.createCanvas( this.resolution.width , this.resolution.height , this.webGL ? "webgl" : 'p2d');
         this.canvas.frameRate(this.frameRate);
         this.canvas.pixelDensity(2);
@@ -153,7 +154,7 @@ class Simulator {
         // Draw all circles that create the track.
         if (!this.tracks[this.trackIndex]) return
         if (this.editingTrack) this.drawTrackBuffer()
-        this.canvas.image(this.trackCanvas, -0.5 * this.canvas.pixelDensity() * this.canvas.width,  -0.5 * this.canvas.pixelDensity() * this.canvas.height);
+        this.canvas.image(this.trackCanvas, -this.canvas.width,  -this.canvas.height);
 
         // For drawing the points on the track that make out the sectors.
         if (this.showDebug && this.trackPoints.length > 0) {
@@ -452,6 +453,7 @@ class Car {
         this.invicible = !this.sim.trainingMode && true;
         this.maxSteer = Math.PI / 3 // Maximale hoek de een wiel kan maken
         this.steerSpeed = this.maxSteer / 0.5 // Snelheid dat de stuuras kan veranderen per seconde.
+        this.accelSpeed = 4 // time to reach top speed = 2 seconds.
        
         // TODO:
         // Add max steering angle
@@ -468,7 +470,8 @@ class Car {
         // TODO: REWORK THIS!
         // Acceleration and Resistance for the movement of the car.
         this.accelResistance = 1 // Decay of 1 pixel per frame per frame per frame
-        this.standardAccel = 10
+        this.standardAccel = 5  // in m/s == 36 km/u
+        this.braking = false
        
         // SECTOR:
         this.currentSector = 0
@@ -478,7 +481,7 @@ class Car {
         this.desiredSteer = 0 // We have control of this!
         this.steer = 0 // Actual wheel position of the car. (Stuur- as)
         this.rotationAngle = Math.PI / 2
-        this.rotationVelocity = 0
+        this.rotationVelocity = 0 // Rotate velocity per frame.
 
         // Distance car has travalled in last frame. aka speed.
         this.distanceInLastFrame = 0 
@@ -576,8 +579,10 @@ class Car {
     // Update the steer value to the desired one. 
     // Do this with the speed the steering wheel is able to steer.
     updateSteer(){
-        if (this.desiredSteer == this.steer) return
-
+        if (this.desiredSteer == this.steer) {
+            // this.desiredSteer = 0;
+            return
+        }
         // Check if the steerspeed needs to be negative.
         // + Use deltaTime to not depend on frames.     
         const negativeSpeed = this.desiredSteer < this.steer
@@ -585,23 +590,20 @@ class Car {
         const newSteer = this.steer + steerSpeed * this.sim.canvas.deltaTime
 
         // Set the steer to the desired steer if the new steer has reached.
-        if (negativeSpeed && newSteer <= this.desiredSteer ) { this.steer = this.desiredSteer; if (!this.sim.trainingMode) this.desiredSteer = 0; return }
-        if (!negativeSpeed && newSteer >= this.desiredSteer ){ this.steer = this.desiredSteer; if (!this.sim.trainingMode) this.desiredSteer = 0; return }
+        if (negativeSpeed && newSteer <= this.desiredSteer ) { this.steer = this.desiredSteer; return }
+        if (!negativeSpeed && newSteer >= this.desiredSteer ){ this.steer = this.desiredSteer; return }
 
         // Set the steer to the steer that has changed.
         // Only gets called when the steer desired is not reached.
         this.steer = newSteer
     }
 
-    setSteer(deltaSteer){
+    setSteer(newDesiredSteer){
         // When in Training mode the AI gives 0 - 1 for steering.
-        if (this.sim.trainingMode) deltaSteer = (deltaSteer - 0.5) * 2 * this.maxSteer
+        if (this.sim.trainingMode) newDesiredSteer = (newDesiredSteer - 0.5) * 2 * this.maxSteer
     
-        const negative = deltaSteer < 0
-        // New Desired steer
-        const newDesiredSteer = this.desiredSteer + deltaSteer
-
         // Check for bounndries of the steer.
+        const negative = deltaSteer < 0
         if (negative && newDesiredSteer < -this.maxSteer ) { this.desiredSteer = -this.maxSteer; this.addToSteerTotal(); return }
         if (!negative && newDesiredSteer > this.maxSteer ) { this.desiredSteer = this.maxSteer; this.addToSteerTotal(); return }
 
@@ -792,11 +794,11 @@ class Car {
 
 $(document).ready( () => {
     __SIMULATOR = new Simulator();
-    __POPULATION = 150;
+    __POPULATION = 100;
 
     // For debugging:
-    // __SIMULATOR.importTrack(circleTrack);
-    // setTimeout( () => __SIMULATOR.saveCurrentTrack(), 1500)
+    __SIMULATOR.importTrack(testTrack);
+    setTimeout( () => __SIMULATOR.saveCurrentTrack(), 1500)
 })
 
 
