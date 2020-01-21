@@ -612,6 +612,29 @@ class Car {
         this.addToSteerTotal();
     }   
 
+    // Manage accelerator and update the values of the current acceleration. 
+    // Was a huge pain to figure out, but I got it!
+    updateAcceleration(){
+        const maxPixelsPerFrame = this.maxSpeed * 100 / 60
+        this.desiredVelocity = this.accelerator * maxPixelsPerFrame// in pixels per frame.
+        
+        if (this.desiredVelocity == this.velocity) return
+        
+        if (this.desiredVelocity > this.velocity || this.desiredVelocity < this.velocity){
+            // this.maxSpeed * 100/ (this.velocitySpeed * this.sim.canvas.deltaTime)
+            const deltaSpeed = this.desiredVelocity - this.velocity // in pixels per frame
+            if (Math.abs(deltaSpeed) < 1) {
+                this.velocity = this.desiredVelocity
+                return
+            }
+
+            const time = this.desiredVelocity < this.velocity ? this.timeToFullStop : this.timeToMaxSpeed
+            const framesNeeded = Math.abs(deltaSpeed) / maxPixelsPerFrame * time * 60
+            this.velocity +=  deltaSpeed / framesNeeded
+            return
+        }
+    }
+
     addToSteerTotal(){
         this.steerChanges.push(Math.abs(this.steer - this.desiredSteer))
     }
